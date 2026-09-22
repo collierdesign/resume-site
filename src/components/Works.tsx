@@ -18,16 +18,24 @@ type WorkItem = {
 
 const W = { "--w-from": 400, "--w-to": 700 } as React.CSSProperties;
 
+/** 折叠阈值：超过该数量显示"查看更多" */
+const COLLAPSE_AT = 6;
+
 export function Works() {
   const cfg = useConfig();
   const works: WorkItem[] = cfg.works.items || [];
   const [active, setActive] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   if (works.length === 0) return null;
 
+  /* 超过 6 个时默认折叠，点"查看更多"展开全部 */
+  const list =
+    expanded || works.length <= COLLAPSE_AT ? works : works.slice(0, COLLAPSE_AT);
+
   /* 奇偶分列 → 右列整体下沉，任何断点下都是两列错位 */
-  const leftCol = works.filter((_, i) => i % 2 === 0);
-  const rightCol = works.filter((_, i) => i % 2 === 1);
+  const leftCol = list.filter((_, i) => i % 2 === 0);
+  const rightCol = list.filter((_, i) => i % 2 === 1);
 
   return (
     <section id="works" className="section-pad relative overflow-hidden">
@@ -57,7 +65,7 @@ export function Works() {
 
         {/* 移动端：单列大图（顺序排列） */}
         <div className="mt-14 flex flex-col gap-14 md:hidden">
-          {works.map((w, i) => (
+          {list.map((w, i) => (
             <WorkCard
               key={`M-${i}`}
               item={w}
@@ -90,6 +98,33 @@ export function Works() {
             ))}
           </div>
         </div>
+
+        {/* 超过阈值时的 展开/收起 */}
+        {works.length > COLLAPSE_AT && (
+          <div className="mt-16 flex flex-col items-center gap-3 md:mt-24">
+            <button
+              onClick={() => {
+                setExpanded((v) => !v);
+                if (expanded) {
+                  // 收起后滚回作品区顶部，避免停留在空白处
+                  document
+                    .getElementById("works")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="eyebrow group/btn flex items-center gap-3 border border-[color:var(--fg)]/40 px-8 py-4 text-[10px] text-[color:var(--fg)] transition-colors duration-500 hover:border-[color:var(--fg)] hover:bg-[color:var(--fg)] hover:text-[color:var(--bg)]"
+            >
+              {expanded
+                ? "收起 · Show Less"
+                : `查看更多 · View More（${works.length - COLLAPSE_AT}）`}
+            </button>
+            {!expanded && (
+              <span className="eyebrow tnum text-[9px] text-[color:var(--muted)]">
+                {String(works.length).padStart(2, "0")} Projects in total
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -177,8 +212,8 @@ function WorkCard({
           </span>
         </div>
 
-        {/* 滑过时自下而上浮出的说明 */}
-        <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[color:var(--bg)]/94 px-3 py-3 backdrop-blur-sm transition-transform duration-[900ms] ease-silk group-hover:translate-y-0 md:px-4 md:py-4">
+        {/* 滑过时自下而上浮出的说明（work-veil：实底 + 磨砂，白底封面也清晰可读） */}
+        <div className="work-veil absolute inset-x-0 bottom-0 translate-y-full px-3 py-3 transition-transform duration-[900ms] ease-silk group-hover:translate-y-0 md:px-4 md:py-4">
           <p className="line-clamp-3 text-[0.72rem] leading-[1.8] text-[color:var(--fg)]/80 md:text-[0.78rem]">
             {item.description}
           </p>

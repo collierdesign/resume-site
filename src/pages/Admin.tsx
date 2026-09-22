@@ -836,8 +836,8 @@ export default function Admin() {
                                         ),
                                       }))
                                     );
-                                    const next = [...(w.gallery || []), url];
-                                    updateWork(i, "gallery", next as any);
+                                    // 函数式追加：始终基于最新 draft，避免闭包过期覆盖前一张
+                                    appendWorkGallery(i, [url]);
                                   } catch (err: any) {
                                     alert(err?.message || "上传失败");
                                   }
@@ -1274,6 +1274,21 @@ export default function Admin() {
     const next = [...draft.works.items];
     next[idx] = { ...next[idx], [key]: value };
     update("works.items", next);
+  }
+
+  /**
+   * 追加画廊图片（函数式更新）。
+   * 多张连续上传时若用 updateWork + 外层闭包里的 w.gallery，
+   * 每次都会基于过期快照覆盖 → 只剩最后一张。此函数始终基于最新 draft 追加。
+   */
+  function appendWorkGallery(idx: number, urls: string[]) {
+    setDraft((d) => {
+      const next = JSON.parse(JSON.stringify(d));
+      const item = next.works.items[idx];
+      if (!item) return d;
+      item.gallery = [...(item.gallery || []), ...urls];
+      return next;
+    });
   }
 
   function updateSkill(idx: number, key: string, value: any) {

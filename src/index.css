@@ -483,3 +483,22 @@
     font-weight: var(--w-from, 400);
   }
 }
+
+/* ── 作品卡片悬停说明层 ──
+   Tailwind v3 无法给 var() 颜色加 /94 透明度修饰符（编译产物里根本没有背景色），
+   因此这里用原生 CSS + color-mix 实现，兜底为纯色。 */
+.work-veil {
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 93%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  /* 上缘细线，任何封面底色下都有边界感 */
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 14%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .work-veil {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
