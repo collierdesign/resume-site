@@ -52,6 +52,8 @@ const EMPTY_WORK: WorkItem = {
   year: "",
   tag: "",
   cover: "",
+  gallery: [],
+  pdf: "",
   description: "",
   role: "",
   link: "",
@@ -402,6 +404,117 @@ export default function Admin() {
                       )}
                     </Field>
 
+                    <Field label="图集 / Gallery（多图，弹窗里左右翻）">
+                      <div className="flex flex-wrap gap-2">
+                        {(w.gallery || []).map((src, gi) => (
+                          <div
+                            key={gi}
+                            className="relative w-20 h-20 border border-white/10 group"
+                          >
+                            <img
+                              src={src}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...(w.gallery || [])];
+                                next.splice(gi, 1);
+                                updateWork(i, "gallery", next as any);
+                              }}
+                              className="absolute top-1 right-1 p-0.5 bg-black/70 text-white opacity-0 group-hover:opacity-100 transition"
+                              aria-label="删除"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-20 h-20 flex items-center justify-center border border-dashed border-white/30 text-white/60 hover:text-white hover:border-white/60 cursor-pointer transition">
+                          <Plus size={16} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (!files.length) return;
+                              const readers = files.map(
+                                (f) =>
+                                  new Promise<string>((resolve, reject) => {
+                                    const r = new FileReader();
+                                    r.onload = () => resolve(r.result as string);
+                                    r.onerror = reject;
+                                    r.readAsDataURL(f);
+                                  })
+                              );
+                              Promise.all(readers).then((urls) => {
+                                const next = [...(w.gallery || []), ...urls];
+                                updateWork(i, "gallery", next as any);
+                              });
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-white/40 mt-2">
+                        💡 弹窗里会按顺序轮播，第一张是默认封面；封面图（Cover）可与图集重复。
+                      </p>
+                    </Field>
+
+                    <Field label="PDF 附件（弹窗里直接预览）">
+                      <div className="flex gap-2">
+                        <Input
+                          value={w.pdf || ""}
+                          onChange={(v) => updateWork(i, "pdf", v)}
+                          placeholder="/works/青山计划.pdf 或 https://..."
+                        />
+                        <label className="flex items-center gap-1 px-3 py-2 border border-white/20 text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5 shrink-0">
+                          <Upload size={12} /> 上传 PDF
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              if (f.size > 5 * 1024 * 1024) {
+                                alert("PDF 超过 5MB，建议放到 public/ 后用 URL 引用。");
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                updateWork(i, "pdf", reader.result as string);
+                                alert("PDF 已载入（base64）。大文件请放 public/ 目录。");
+                              };
+                              reader.readAsDataURL(f);
+                            }}
+                          />
+                        </label>
+                      </div>
+                      {w.pdf && (
+                        <div className="mt-2 border border-white/10 bg-black/30">
+                          <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+                            <p className="text-[10px] uppercase tracking-[0.25em] text-white/60">
+                              预览
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => updateWork(i, "pdf", "")}
+                              className="text-rose-400 hover:text-rose-300 text-[10px] uppercase tracking-[0.2em] inline-flex items-center gap-1"
+                            >
+                              <Trash2 size={10} /> 清除
+                            </button>
+                          </div>
+                          <iframe
+                            src={w.pdf}
+                            title="PDF preview"
+                            className="w-full h-48"
+                          />
+                        </div>
+                      )}
+                    </Field>
+
                     <Field label="描述 / Description">
                       <Textarea
                         value={w.description}
@@ -691,7 +804,7 @@ export default function Admin() {
     </main>
   );
 
-  function updateWork(idx: number, key: keyof WorkItem, value: string) {
+  function updateWork(idx: number, key: keyof WorkItem, value: any) {
     const next = [...draft.works.items];
     next[idx] = { ...next[idx], [key]: value };
     update("works.items", next);

@@ -36,6 +36,8 @@ export interface WorkItem {
   year: string;
   tag: string;
   cover?: string;
+  gallery?: string[];
+  pdf?: string;
   description: string;
   role?: string;
   link?: string;

@@ -7,7 +7,7 @@ export function Hero() {
   const cfg = useConfig();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // 鼠标 spotlight（更大更柔）
+  // 鼠标 spotlight
   const mx = useMotionValue(50);
   const my = useMotionValue(50);
   const sx = useSpring(mx, { damping: 30, stiffness: 120, mass: 0.6 });
@@ -40,40 +40,14 @@ export function Hero() {
       id="hero"
       className="relative min-h-screen w-full overflow-hidden flex flex-col"
     >
-      {/* ───── 隐藏 SVG 滤镜定义 ───── */}
+      {/* ───── SVG 滤镜定义（仅保留颗粒噪点）──── */}
       <svg className="absolute w-0 h-0" aria-hidden="true">
         <defs>
-          {/* 液体流淌：用 turbulence + 位移滤镜让色块持续变形 */}
-          <filter id="liquid" x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.008 0.012"
-              numOctaves="2"
-              seed="5"
-              result="turb"
-            >
-              <animate
-                attributeName="baseFrequency"
-                values="0.008 0.012;0.016 0.009;0.011 0.014;0.008 0.012"
-                dur="24s"
-                repeatCount="indefinite"
-              />
-            </feTurbulence>
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="turb"
-              scale="320"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-
-          {/* 颗粒噪点（更强） */}
           <filter id="grain">
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.7"
-              numOctaves="3"
+              baseFrequency="0.9"
+              numOctaves="2"
               stitchTiles="stitch"
             />
             <feColorMatrix type="saturate" values="0" />
@@ -101,7 +75,7 @@ export function Hero() {
           />
         ) : (
           <>
-            {/* 2. 底层基础渐变（对角、深色） */}
+            {/* 2. 底层对角深色渐变 */}
             <div
               className="absolute inset-0"
               style={{
@@ -110,49 +84,60 @@ export function Hero() {
               }}
             />
 
-            {/* 3. 液体流淌层：多个柔光色块被 SVG 滤镜扭曲变形 */}
+            {/* 3. 静态"液体"：多层柔光色块用高斯模糊融合（不动画） */}
             <div
-              className="absolute inset-0"
-              style={{ filter: "url(#liquid)" }}
+              className="absolute inset-0 overflow-hidden"
+              style={{ filter: "blur(90px) saturate(1.15)" }}
             >
               <div
-                className="absolute inset-0"
-                style={{
-                  background: `
-                    radial-gradient(ellipse 55% 45% at 22% 28%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 65%),
-                    radial-gradient(ellipse 45% 55% at 78% 62%, color-mix(in srgb, var(--accent) 40%, transparent), transparent 70%),
-                    radial-gradient(ellipse 50% 60% at 48% 88%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 65%)
-                  `,
-                }}
-              />
-              <div
-                className="absolute -top-40 -left-40 w-[700px] h-[700px]"
+                className="absolute -top-32 -left-32 w-[600px] h-[600px]"
                 style={{
                   background:
-                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 35%, transparent) 0%, transparent 70%)",
+                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 50%, transparent) 0%, transparent 70%)",
                 }}
               />
               <div
-                className="absolute -bottom-32 -right-32 w-[650px] h-[650px]"
+                className="absolute top-1/3 -right-40 w-[550px] h-[550px]"
+                style={{
+                  background:
+                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 38%, transparent) 0%, transparent 70%)",
+                }}
+              />
+              <div
+                className="absolute -bottom-40 left-1/4 w-[700px] h-[700px]"
                 style={{
                   background:
                     "radial-gradient(circle, color-mix(in srgb, var(--accent) 28%, transparent) 0%, transparent 70%)",
+                }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px]"
+                style={{
+                  background:
+                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 32%, transparent) 0%, transparent 70%)",
+                }}
+              />
+              <div
+                className="absolute top-1/4 right-1/3 w-[350px] h-[350px]"
+                style={{
+                  background:
+                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 25%, transparent) 0%, transparent 70%)",
                 }}
               />
             </div>
           </>
         )}
 
-        {/* 4. 加密网格（更密） */}
+        {/* 4. 加密网格（24px） */}
         <svg
           className="absolute inset-0 w-full h-full text-[color:var(--fg)] pointer-events-none"
-          style={{ opacity: 0.1 }}
+          style={{ opacity: 0.12 }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <pattern id="heroGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+            <pattern id="heroGrid" width="24" height="24" patternUnits="userSpaceOnUse">
               <path
-                d="M 32 0 L 0 0 0 32"
+                d="M 24 0 L 0 0 0 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="0.4"
@@ -162,16 +147,16 @@ export function Hero() {
           <rect width="100%" height="100%" fill="url(#heroGrid)" />
         </svg>
 
-        {/* 5. 强噪点纹理 */}
+        {/* 5. 强颗粒纹理（更明显的"纸感"） */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ opacity: 0.14, mixBlendMode: "overlay" }}
+          style={{ opacity: 0.2, mixBlendMode: "overlay" }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
 
-        {/* 6. 鼠标 spotlight（更大、更柔） */}
+        {/* 6. 鼠标 spotlight */}
         <motion.div
           className="absolute rounded-full pointer-events-none"
           style={{
