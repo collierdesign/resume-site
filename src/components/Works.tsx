@@ -154,17 +154,32 @@ function WorkCard({
   index: number;
   onOpen: () => void;
 }) {
-  /* 手机端：封面滚到屏幕中线偏上（约 42%–44% 高度带）时，说明条自动弹出；划走自动收起 */
+  /* 手机端：封面跨过屏幕中线偏上（约 43% 高度）的触发线时说明条自动弹出；整卡划过线后自动收起。
+     用 rAF + getBoundingClientRect 直接判定，滚动再快（含锚点跳转）也不会漏判 —— 之前
+     IntersectionObserver 窄带方案在快速滚动时会漏掉第一个作品的弹出/收起 */
   const coverRef = useRef<HTMLDivElement>(null);
   const [veilUp, setVeilUp] = useState(false);
   useEffect(() => {
     const el = coverRef.current;
     if (!el || !window.matchMedia("(max-width: 767px)").matches) return;
-    const io = new IntersectionObserver(([entry]) => setVeilUp(entry.isIntersecting), {
-      rootMargin: "-42% 0px -56% 0px",
-    });
-    io.observe(el);
-    return () => io.disconnect();
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      const line = window.innerHeight * 0.43;
+      setVeilUp(rect.top <= line && rect.bottom >= line);
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   return (
@@ -205,17 +220,18 @@ function WorkCard({
           </div>
         )}
 
-        {/* 说明条：桌面端滑过弹出（hover）；手机端随滚动位置自动弹出/收起 */}
+        {/* 说明条：桌面端滑过弹出（hover）；手机端只随滚动位置自动弹出/收起，
+            不响应触摸的 hover 模拟（否则按住封面一会就卡在弹出状态） */}
         <div
           className={`work-veil absolute inset-x-0 bottom-0 px-3 py-3.5 transition-transform duration-[900ms] ease-silk md:px-4 md:py-4 ${
             veilUp ? "translate-y-0" : "translate-y-full"
-          } group-hover:translate-y-0`}
+          } md:group-hover:translate-y-0`}
         >
           <p className="line-clamp-3 text-[0.72rem] leading-[1.8] text-[color:var(--fg)]/80 md:text-[0.78rem]">
             {item.description}
           </p>
-          <span className="eyebrow mt-3 flex items-center gap-2.5 text-[11px] text-[color:var(--accent)]">
-            详情 <ArrowUpRight size={13} />
+          <span className="eyebrow mt-3.5 flex items-center gap-3 text-[12px] text-[color:var(--accent)]">
+            详情 <ArrowUpRight size={14} />
           </span>
         </div>
       </div>
@@ -326,9 +342,6 @@ function WorkModal({
       ? [item.cover]
       : [];
 
-  const navBtn =
-    "eyebrow text-[10px] text-[color:var(--muted)] transition-colors hover:text-[color:var(--fg)]";
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -362,11 +375,11 @@ function WorkModal({
           if (info.offset.y < -half || info.velocity.y < -700) onClose();
           else if (info.offset.y > 120 || info.velocity.y > 600) onClose();
         }}
-        className="relative flex h-[85vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:select-text md:rounded-none"
+        className="relative flex h-[95vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 bg-[#141412] shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-transparent md:select-text md:rounded-none"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 玻璃层 1：磨砂压暗；层 2：黑色镜面渐变 */}
-        <div className="glass-warp pointer-events-none absolute inset-0" />
+        {/* 玻璃层 1：磨砂压暗（手机端实底不磨砂）；层 2：黑色镜面渐变 */}
+        <div className="glass-warp pointer-events-none absolute inset-0 hidden md:block" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#1a1a19]/72 via-[#0c0c0b]/70 to-[#161613]/78" />
         {/* 玻璃上缘高光 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
@@ -382,26 +395,34 @@ function WorkModal({
             dragControls.start(e);
           }}
         >
-          {/* 手机端抽屉把手（加粗提亮，深色下清晰可见） */}
+          {/* 手机端抽屉把手（朱红色，深色底上一眼可见） */}
           <div className="flex justify-center pb-1.5 pt-3 md:hidden">
-            <span className="h-1.5 w-12 rounded-full bg-white/60" />
+            <span className="h-1.5 w-14 rounded-full bg-[color:var(--accent)]" />
           </div>
 
-          {/* 顶栏 */}
-          <div className="flex items-center justify-between border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-xl md:px-8">
-            <span className="eyebrow tnum text-[10px]">
+          {/* 顶栏（手机端白底红字，桌面端保持黑色玻璃） */}
+          <div className="flex items-center justify-between border-b border-black/10 bg-white px-5 py-4 md:border-white/10 md:bg-black/35 md:backdrop-blur-xl md:px-8">
+            <span className="eyebrow tnum text-[10px] text-[#141310]/55 md:text-inherit">
               {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
             </span>
             <div className="flex items-center gap-6">
-              <button onClick={onPrev} className={navBtn} aria-label="Previous">
+              <button
+                onClick={onPrev}
+                className="eyebrow text-[10px] text-[color:var(--accent)] transition-colors md:text-[color:var(--muted)] md:hover:text-[color:var(--fg)]"
+                aria-label="Previous"
+              >
                 ← Prev
               </button>
-              <button onClick={onNext} className={navBtn} aria-label="Next">
+              <button
+                onClick={onNext}
+                className="eyebrow text-[10px] text-[color:var(--accent)] transition-colors md:text-[color:var(--muted)] md:hover:text-[color:var(--fg)]"
+                aria-label="Next"
+              >
                 Next →
               </button>
               <button
                 onClick={onClose}
-                className="eyebrow text-[10px] text-[color:var(--fg)]"
+                className="eyebrow text-[10px] text-[color:var(--accent)] md:text-[color:var(--fg)]"
                 aria-label="Close"
               >
                 Close
@@ -409,20 +430,20 @@ function WorkModal({
             </div>
           </div>
 
-          {/* 标题区：固定在顶部，不随图片滚动；标题下方同步展示封面条上的项目介绍 */}
-          <div className="relative z-20 shrink-0 border-b border-white/10 bg-black/55 px-5 py-6 backdrop-blur-xl md:px-8 md:py-8">
+          {/* 标题区：固定在顶部，不随图片滚动；手机端白底黑字（红字点缀），桌面端黑色玻璃 */}
+          <div className="relative z-20 shrink-0 border-b border-black/10 bg-white px-5 py-6 md:border-white/10 md:bg-black/55 md:backdrop-blur-xl md:px-8 md:py-8">
             <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
               <span className="seal-line" />
               {item.tag} · {item.year}
             </p>
-            <h3 className="display mt-4 text-[clamp(1.5rem,3.2vw,2.5rem)] leading-[1.15] text-[color:var(--fg)]">
+            <h3 className="display mt-4 text-[clamp(1.5rem,3.2vw,2.5rem)] leading-[1.15] text-[#141310] md:text-[color:var(--fg)]">
               {item.title}
             </h3>
-            <p className="mt-4 line-clamp-4 whitespace-pre-line text-[0.82rem] leading-[1.85] text-[color:var(--fg)]/65 md:text-[0.88rem]">
+            <p className="mt-4 line-clamp-4 whitespace-pre-line text-[0.82rem] leading-[1.85] text-[#141310]/70 md:text-[0.88rem] md:text-[color:var(--fg)]/65">
               {item.description}
             </p>
             {item.role && (
-              <p className="mt-3 text-sm text-[color:var(--muted)]">
+              <p className="mt-3 text-sm text-[#141310]/60 md:text-[color:var(--muted)]">
                 <span className="eyebrow mr-3 text-[10px]">Role</span>
                 {item.role}
               </p>
