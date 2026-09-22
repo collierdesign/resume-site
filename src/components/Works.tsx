@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, Download } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 import { useConfig } from "../lib/useConfig";
@@ -154,15 +154,6 @@ function WorkCard({
   index: number;
   onOpen: () => void;
 }) {
-  const mediaRef = useRef<HTMLDivElement>(null);
-
-  /* 封面视差：滚过视口时图片在框内反向滑移 */
-  const { scrollYProgress } = useScroll({
-    target: mediaRef,
-    offset: ["start end", "end start"],
-  });
-  const imgY = useTransform(scrollYProgress, [0, 1], ["-7%", "7%"]);
-
   return (
     <motion.button
       onClick={onOpen}
@@ -177,20 +168,18 @@ function WorkCard({
       className="group block w-full text-left"
     >
       <div
-        ref={mediaRef}
-        className="relative aspect-video w-full overflow-hidden border border-[color:var(--line)]"
+        className="relative w-full overflow-hidden border border-[color:var(--line)]"
       >
-        {/* 封面（加高 116% 以留出视差滑移余量） */}
+        {/* 封面：按后台裁剪的原始比例完整显示（所见即所得，不再二次裁切） */}
         {item.cover ? (
-          <motion.img
+          <img
             src={item.cover}
             alt={item.title}
             loading="lazy"
-            style={{ y: imgY }}
-            className="absolute -top-[8%] left-0 h-[116%] w-full object-cover grayscale-[18%] transition-[filter] duration-[1400ms] ease-silk group-hover:grayscale-0"
+            className="block w-full grayscale-[18%] transition-[filter] duration-[1400ms] ease-silk group-hover:grayscale-0"
           />
         ) : (
-          <>
+          <div className="relative aspect-video w-full">
             <div
               className="absolute inset-0"
               style={{
@@ -199,7 +188,7 @@ function WorkCard({
               }}
             />
             <div className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-[color:var(--accent)]/35" />
-          </>
+          </div>
         )}
 
         {/* 编号 / 年份 */}
