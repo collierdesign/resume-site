@@ -154,6 +154,19 @@ function WorkCard({
   index: number;
   onOpen: () => void;
 }) {
+  /* 手机端：封面滚到屏幕中线偏上（约 42%–44% 高度带）时，说明条自动弹出；划走自动收起 */
+  const coverRef = useRef<HTMLDivElement>(null);
+  const [veilUp, setVeilUp] = useState(false);
+  useEffect(() => {
+    const el = coverRef.current;
+    if (!el || !window.matchMedia("(max-width: 767px)").matches) return;
+    const io = new IntersectionObserver(([entry]) => setVeilUp(entry.isIntersecting), {
+      rootMargin: "-42% 0px -56% 0px",
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <motion.button
       onClick={onOpen}
@@ -168,6 +181,7 @@ function WorkCard({
       className="group block w-full touch-manipulation text-left"
     >
       <div
+        ref={coverRef}
         className="relative w-full overflow-hidden border border-[color:var(--line)]"
       >
         {/* 封面：按后台裁剪的原始比例完整显示（所见即所得，不再二次裁切） */}
@@ -191,13 +205,17 @@ function WorkCard({
           </div>
         )}
 
-        {/* 滑过时自下而上浮出的说明（work-veil：实底 + 磨砂，白底封面也清晰可读） */}
-        <div className="work-veil absolute inset-x-0 bottom-0 translate-y-full px-3 py-3 transition-transform duration-[900ms] ease-silk group-hover:translate-y-0 md:px-4 md:py-4">
+        {/* 说明条：桌面端滑过弹出（hover）；手机端随滚动位置自动弹出/收起 */}
+        <div
+          className={`work-veil absolute inset-x-0 bottom-0 px-3 py-3.5 transition-transform duration-[900ms] ease-silk md:px-4 md:py-4 ${
+            veilUp ? "translate-y-0" : "translate-y-full"
+          } group-hover:translate-y-0`}
+        >
           <p className="line-clamp-3 text-[0.72rem] leading-[1.8] text-[color:var(--fg)]/80 md:text-[0.78rem]">
             {item.description}
           </p>
-          <span className="eyebrow mt-2 flex items-center gap-2 text-[9px] text-[color:var(--accent)] md:mt-3">
-            详情 <ArrowUpRight size={11} />
+          <span className="eyebrow mt-3 flex items-center gap-2.5 text-[11px] text-[color:var(--accent)]">
+            详情 <ArrowUpRight size={13} />
           </span>
         </div>
       </div>
@@ -344,7 +362,7 @@ function WorkModal({
           if (info.offset.y < -half || info.velocity.y < -700) onClose();
           else if (info.offset.y > 120 || info.velocity.y > 600) onClose();
         }}
-        className="relative flex h-[70vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:select-text md:rounded-none"
+        className="relative flex h-[85vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:select-text md:rounded-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 玻璃层 1：磨砂压暗；层 2：黑色镜面渐变 */}
@@ -364,9 +382,9 @@ function WorkModal({
             dragControls.start(e);
           }}
         >
-          {/* 手机端抽屉把手 */}
-          <div className="flex justify-center pb-1 pt-2.5 md:hidden">
-            <span className="h-1 w-10 rounded-full bg-white/30" />
+          {/* 手机端抽屉把手（加粗提亮，深色下清晰可见） */}
+          <div className="flex justify-center pb-1.5 pt-3 md:hidden">
+            <span className="h-1.5 w-12 rounded-full bg-white/60" />
           </div>
 
           {/* 顶栏 */}
