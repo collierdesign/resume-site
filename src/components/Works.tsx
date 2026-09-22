@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { ArrowUpRight, Download } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 import { useConfig } from "../lib/useConfig";
@@ -165,7 +165,7 @@ function WorkCard({
         delay: (index % 2) * 0.08,
         ease: [0.22, 1, 0.36, 1],
       }}
-      className="group block w-full text-left"
+      className="group block w-full touch-manipulation text-left"
     >
       <div
         className="relative w-full overflow-hidden border border-[color:var(--line)]"
@@ -197,7 +197,7 @@ function WorkCard({
             {item.description}
           </p>
           <span className="eyebrow mt-2 flex items-center gap-2 text-[9px] text-[color:var(--accent)] md:mt-3">
-            View case <ArrowUpRight size={11} />
+            详情 <ArrowUpRight size={11} />
           </span>
         </div>
       </div>
@@ -258,20 +258,49 @@ function WorkModal({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  /* 手机端：弹窗改为底部半屏抽屉（头部可拖拽，上滑过半屏 / 下滑收起） */
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const fn = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+
+  const dragControls = useDragControls();
+
+  /* 最新回调存 ref：effect 只跑一次，避免反复解绑/绑定 */
+  const cbRef = useRef({ onClose, onPrev, onNext });
+  cbRef.current = { onClose, onPrev, onNext };
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") onPrev();
-      if (e.key === "ArrowRight") onNext();
+      if (e.key === "Escape") cbRef.current.onClose();
+      if (e.key === "ArrowLeft") cbRef.current.onPrev();
+      if (e.key === "ArrowRight") cbRef.current.onNext();
     };
     window.addEventListener("keydown", onKey);
+
+    /* 打开时压入一条历史记录：手机返回键 = 关弹窗，而不是退出网站 */
+    window.history.pushState({ workModal: true }, "");
+    const onPop = () => cbRef.current.onClose();
+    window.addEventListener("popstate", onPop);
+
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPop);
+      /* 通过界面（而非返回键）关闭时，把压入的历史记录弹回去 */
+      if (window.history.state?.workModal) window.history.back();
     };
-  }, [onClose, onPrev, onNext]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const gallery: string[] = item.gallery?.length
     ? item.gallery
@@ -287,16 +316,35 @@ function WorkModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.35 }}
-      className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/40 p-0 md:items-center md:p-8"
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 md:items-center md:p-8"
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.985 }}
+        initial={{
+          opacity: 0,
+          y: isMobile ? "100%" : 40,
+          scale: isMobile ? 1 : 0.985,
+        }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.985 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="relative flex h-full w-full flex-col overflow-hidden border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl"
+        exit={{
+          opacity: 0,
+          y: isMobile ? "100%" : 40,
+          scale: isMobile ? 1 : 0.985,
+        }}
+        transition={{ duration: isMobile ? 0.4 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+        drag={isMobile ? "y" : false}
+        dragListener={false}
+        dragControls={dragControls}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0.55, bottom: 0.3 }}
+        onDragEnd={(_, info) => {
+          /* 上滑超过半屏或快速上甩 → 收起；下滑同样可收起 */
+          const half = window.innerHeight / 2;
+          if (info.offset.y < -half || info.velocity.y < -700) onClose();
+          else if (info.offset.y > 120 || info.velocity.y > 600) onClose();
+        }}
+        className="relative flex h-[70vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:select-text md:rounded-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 玻璃层 1：磨砂压暗；层 2：黑色镜面渐变 */}
@@ -305,43 +353,63 @@ function WorkModal({
         {/* 玻璃上缘高光 */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
 
-        {/* 顶栏 */}
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-xl md:px-8">
-          <span className="eyebrow tnum text-[10px]">
-            {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-          </span>
-          <div className="flex items-center gap-6">
-            <button onClick={onPrev} className={navBtn} aria-label="Previous">
-              ← Prev
-            </button>
-            <button onClick={onNext} className={navBtn} aria-label="Next">
-              Next →
-            </button>
-            <button
-              onClick={onClose}
-              className="eyebrow text-[10px] text-[color:var(--fg)]"
-              aria-label="Close"
-            >
-              Close
-            </button>
+        {/* 头部整体（手机端作为抽屉拖拽把手区：按住上下拖动） */}
+        <div
+          className="relative z-20 shrink-0"
+          style={isMobile ? { touchAction: "none" } : undefined}
+          onPointerDown={(e) => {
+            if (!isMobile) return;
+            /* 按钮上按下时不启动拖拽，保证点击正常 */
+            if ((e.target as HTMLElement).closest("button, a")) return;
+            dragControls.start(e);
+          }}
+        >
+          {/* 手机端抽屉把手 */}
+          <div className="flex justify-center pb-1 pt-2.5 md:hidden">
+            <span className="h-1 w-10 rounded-full bg-white/30" />
           </div>
-        </div>
 
-        {/* 标题区：固定在顶部，不随图片滚动 */}
-        <div className="relative z-20 shrink-0 border-b border-white/10 bg-black/55 px-5 py-6 backdrop-blur-xl md:px-8 md:py-8">
-          <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
-            <span className="seal-line" />
-            {item.tag} · {item.year}
-          </p>
-          <h3 className="display mt-4 text-[clamp(1.5rem,3.2vw,2.5rem)] leading-[1.15] text-[color:var(--fg)]">
-            {item.title}
-          </h3>
-          {item.role && (
-            <p className="mt-3 text-sm text-[color:var(--muted)]">
-              <span className="eyebrow mr-3 text-[10px]">Role</span>
-              {item.role}
+          {/* 顶栏 */}
+          <div className="flex items-center justify-between border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-xl md:px-8">
+            <span className="eyebrow tnum text-[10px]">
+              {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+            </span>
+            <div className="flex items-center gap-6">
+              <button onClick={onPrev} className={navBtn} aria-label="Previous">
+                ← Prev
+              </button>
+              <button onClick={onNext} className={navBtn} aria-label="Next">
+                Next →
+              </button>
+              <button
+                onClick={onClose}
+                className="eyebrow text-[10px] text-[color:var(--fg)]"
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          {/* 标题区：固定在顶部，不随图片滚动；标题下方同步展示封面条上的项目介绍 */}
+          <div className="relative z-20 shrink-0 border-b border-white/10 bg-black/55 px-5 py-6 backdrop-blur-xl md:px-8 md:py-8">
+            <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
+              <span className="seal-line" />
+              {item.tag} · {item.year}
             </p>
-          )}
+            <h3 className="display mt-4 text-[clamp(1.5rem,3.2vw,2.5rem)] leading-[1.15] text-[color:var(--fg)]">
+              {item.title}
+            </h3>
+            <p className="mt-4 line-clamp-4 whitespace-pre-line text-[0.82rem] leading-[1.85] text-[color:var(--fg)]/65 md:text-[0.88rem]">
+              {item.description}
+            </p>
+            {item.role && (
+              <p className="mt-3 text-sm text-[color:var(--muted)]">
+                <span className="eyebrow mr-3 text-[10px]">Role</span>
+                {item.role}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="relative z-10 flex-1 overflow-y-auto">
