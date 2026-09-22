@@ -28,6 +28,8 @@ import {
 import { useConfig, useConfigActions } from "../lib/useConfig";
 import { defaultConfig } from "../data/config";
 import type { SiteConfig, WorkItem } from "../types";
+import { ImageCropper } from "../components/ImageCropper";
+import { uploadImage, uploadFile, MAX_IMAGE_BYTES } from "../lib/storage";
 
 const THEMES = [
   { id: "light", label: "純白", preview: "#ffffff" },
@@ -88,6 +90,13 @@ export default function Admin() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+  /** 上传进度：key → 0-100 */
+  const [uploading, setUploading] = useState<Record<string, number>>({});
+  /** 待裁剪的文件及其用途 */
+  const [cropJob, setCropJob] = useState<{
+    file: File;
+    apply: (f: File) => void;
+  } | null>(null);
 
   useEffect(() => {
     setDraft(cfg);
@@ -166,6 +175,66 @@ export default function Admin() {
       }
     };
     reader.readAsText(file);
+  };
+
+  /**
+   * 统一上传入口：带进度展示。
+   * apply 在拿到稳定 URL 后写入 draft。
+   */
+  const startUpload = async (
+    key: string,
+    file: File,
+    apply: (url: string) => void
+  ) => {
+    if (file.size > MAX_IMAGE_BYTES) {
+      alert(
+        `图片 ${(file.size / 1024 / 1024).toFixed(1)}MB 超过 3MB 上限，请压缩后再上传。`
+      );
+      return;
+    }
+    try {
+      setUploading((m) => ({ ...m, [key]: 0 }));
+      const url = await uploadImage(file, file.name, (p) =>
+        setUploading((m) => ({ ...m, [key]: p }))
+      );
+      apply(url);
+    } catch (e: any) {
+      alert(e?.message || "上传失败 / Upload failed");
+    } finally {
+      setUploading((m) => {
+        const n = { ...m };
+        delete n[key];
+        return n;
+      });
+    }
+  };
+
+  /** 打开裁剪窗口（选择图片 → 裁剪 → 上传） */
+  const openCropper = (file: File, apply: (f: File) => void) => {
+    if (file.size > MAX_IMAGE_BYTES) {
+      alert(
+        `图片 ${(file.size / 1024 / 1024).toFixed(1)}MB 超过 3MB 上限，请压缩后再上传。`
+      );
+      return;
+    }
+    setCropJob({ file, apply });
+  };
+
+  /** 上传进度条（内联小组件） */
+  const progressBar = (key: string) => {
+    const p = uploading[key];
+    if (p === undefined) return null;
+    return (
+      <div className="mt-2 h-1 w-full bg-white/10">
+        <div
+          className="h-full bg-emerald-400 transition-all duration-200"
+          style={{ width: `${p}%` }}
+        />
+        <p className="mt-1 text-[10px] text-emerald-400/80">
+          上传中… {p}%
+        </p>
+      </div>
+    );
   };
 
   // ───────── 已登录 ─────────
@@ -520,7 +589,7 @@ export default function Admin() {
                       }}
                     />
                   </Field>
-                  <Field label="Description">
+                  <Field label="描述 / Description">
                     <Textarea
                       value={it.description}
                       onChange={(v) => {
@@ -528,6 +597,23 @@ export default function Admin() {
                         next[i] = { ...next[i], description: v };
                         update("experience.items", next);
                       }}
+                    />
+                  </Field>
+                  <Field label="总结亮点 / Highlights（每行一条，如：主导 5+ 个品牌……）">
+                    <Textarea
+                      value={(it.highlights || []).join("\n")}
+                      onChange={(v) => {
+                        const next = [...draft.experience.items];
+                        next[i] = {
+                          ...next[i],
+                          highlights: v
+                            .split("\n")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        };
+                        update("experience.items", next);
+                      }}
+                      rows={3}
                     />
                   </Field>
                 </div>
@@ -625,15 +711,15 @@ export default function Admin() {
                       </Field>
                     </div>
 
-                    <Field label="封面图 URL / Cover">
+                    <Field label="封面图 URL / Cover（本机上传会打开裁剪窗口）">
                       <div className="flex gap-2">
                         <Input
                           value={w.cover || ""}
                           onChange={(v) => updateWork(i, "cover", v)}
-                          placeholder="/works/青山计划.jpg 或 https://..."
+                          placeholder="https://... 或点击下方按钮本机上传"
                         />
                         <label className="flex items-center gap-1 px-3 py-2 border border-white/20 text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5 shrink-0">
-                          <Upload size={12} /> 本机
+                          <Upload size={12} /> 上传并裁剪
                           <input
                             type="file"
                             accept="image/*"
@@ -641,18 +727,17 @@ export default function Admin() {
                             onChange={(e) => {
                               const f = e.target.files?.[0];
                               if (!f) return;
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                updateWork(i, "cover", reader.result as string);
-                                alert(
-                                  "封面已载入（base64）。图片 < 1MB 推荐，否则会超 localStorage。"
-                                );
-                              };
-                              reader.readAsDataURL(f);
+                              e.target.value = "";
+                              openCropper(f, (cropped) =>
+                                startUpload(`cover-${i}`, cropped, (url) =>
+                                  updateWork(i, "cover", url)
+                                )
+                              );
                             }}
                           />
                         </label>
                       </div>
+                      {progressBar(`cover-${i}`)}
                       {w.cover && (
                         <div className="mt-2 h-24 w-32 border border-white/10 overflow-hidden bg-black/30">
                           <img
@@ -664,18 +749,43 @@ export default function Admin() {
                       )}
                     </Field>
 
-                    <Field label="图集 / Gallery（多图，弹窗里左右翻）">
+                    <Field label="图集 / Gallery（拖动缩略图可排序，弹窗里左右翻）">
                       <div className="flex flex-wrap gap-2">
                         {(w.gallery || []).map((src, gi) => (
                           <div
                             key={gi}
-                            className="relative w-20 h-20 border border-white/10 group"
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", String(gi));
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const from = parseInt(
+                                e.dataTransfer.getData("text/plain"),
+                                10
+                              );
+                              if (isNaN(from) || from === gi) return;
+                              const next = [...(w.gallery || [])];
+                              const [moved] = next.splice(from, 1);
+                              next.splice(gi, 0, moved);
+                              updateWork(i, "gallery", next as any);
+                            }}
+                            className="relative w-20 h-20 border border-white/10 group cursor-grab active:cursor-grabbing"
+                            title="拖动排序"
                           >
                             <img
                               src={src}
                               alt=""
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover pointer-events-none"
                             />
+                            <span className="absolute bottom-1 left-1 bg-black/70 px-1 text-[9px] text-white/80">
+                              {gi + 1}
+                            </span>
                             <button
                               type="button"
                               onClick={() => {
@@ -700,25 +810,51 @@ export default function Admin() {
                             onChange={(e) => {
                               const files = Array.from(e.target.files || []);
                               if (!files.length) return;
-                              const readers = files.map(
-                                (f) =>
-                                  new Promise<string>((resolve, reject) => {
-                                    const r = new FileReader();
-                                    r.onload = () => resolve(r.result as string);
-                                    r.onerror = reject;
-                                    r.readAsDataURL(f);
-                                  })
-                              );
-                              Promise.all(readers).then((urls) => {
-                                const next = [...(w.gallery || []), ...urls];
-                                updateWork(i, "gallery", next as any);
-                              });
+                              e.target.value = "";
+                              const bad = files.find((f) => f.size > MAX_IMAGE_BYTES);
+                              if (bad) {
+                                alert(
+                                  `「${bad.name}」${(bad.size / 1024 / 1024).toFixed(1)}MB 超过 3MB 上限`
+                                );
+                                return;
+                              }
+                              (async () => {
+                                for (let fi = 0; fi < files.length; fi++) {
+                                  const f = files[fi];
+                                  try {
+                                    setUploading((m) => ({
+                                      ...m,
+                                      [`gallery-${i}`]: Math.round(
+                                        (fi / files.length) * 100
+                                      ),
+                                    }));
+                                    const url = await uploadImage(f, f.name, (p) =>
+                                      setUploading((m) => ({
+                                        ...m,
+                                        [`gallery-${i}`]: Math.round(
+                                          ((fi + p / 100) / files.length) * 100
+                                        ),
+                                      }))
+                                    );
+                                    const next = [...(w.gallery || []), url];
+                                    updateWork(i, "gallery", next as any);
+                                  } catch (err: any) {
+                                    alert(err?.message || "上传失败");
+                                  }
+                                }
+                                setUploading((m) => {
+                                  const n = { ...m };
+                                  delete n[`gallery-${i}`];
+                                  return n;
+                                });
+                              })();
                             }}
                           />
                         </label>
                       </div>
+                      {progressBar(`gallery-${i}`)}
                       <p className="text-xs text-white/40 mt-2">
-                        💡 弹窗里会按顺序轮播，第一张是默认封面；封面图（Cover）可与图集重复。
+                        💡 按住缩略图拖动即可调整顺序；弹窗里按此顺序轮播，第一张默认作封面。
                       </p>
                     </Field>
 
@@ -738,20 +874,29 @@ export default function Admin() {
                             onChange={(e) => {
                               const f = e.target.files?.[0];
                               if (!f) return;
-                              if (f.size > 5 * 1024 * 1024) {
-                                alert("PDF 超过 5MB，建议放到 public/ 后用 URL 引用。");
-                                return;
-                              }
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                updateWork(i, "pdf", reader.result as string);
-                                alert("PDF 已载入（base64）。大文件请放 public/ 目录。");
-                              };
-                              reader.readAsDataURL(f);
+                              e.target.value = "";
+                              (async () => {
+                                try {
+                                  setUploading((m) => ({ ...m, [`pdf-${i}`]: 0 }));
+                                  const url = await uploadFile(f, (p) =>
+                                    setUploading((m) => ({ ...m, [`pdf-${i}`]: p }))
+                                  );
+                                  updateWork(i, "pdf", url);
+                                } catch (err: any) {
+                                  alert(err?.message || "上传失败");
+                                } finally {
+                                  setUploading((m) => {
+                                    const n = { ...m };
+                                    delete n[`pdf-${i}`];
+                                    return n;
+                                  });
+                                }
+                              })();
                             }}
                           />
                         </label>
                       </div>
+                      {progressBar(`pdf-${i}`)}
                       {w.pdf && (
                         <div className="mt-2 border border-white/10 bg-black/30">
                           <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
@@ -970,38 +1115,68 @@ export default function Admin() {
                 </Field>
 
                 <div className="pt-4 border-t border-white/10">
-                  <button
-                    onClick={async () => {
-                      const input = document.createElement("input");
-                      input.type = "file";
-                      input.accept = "application/pdf";
-                      input.onchange = async () => {
-                        const file = input.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const dataUrl = reader.result as string;
-                          update("pdf.url", dataUrl);
-                          alert("PDF 已载入（保存在浏览器本地）。注意：大文件会超过 localStorage 限制，建议放到 public/ 目录。");
-                        };
-                        reader.readAsDataURL(file);
-                      };
-                      input.click();
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em] hover:bg-white/90"
-                  >
-                    <Upload size={14} /> 从本机上传 PDF（转 base64）
-                  </button>
+                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em] hover:bg-white/90 cursor-pointer">
+                    <Upload size={14} /> 从本机上传 PDF · Upload（≤10MB，存云存储）
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        e.target.value = "";
+                        (async () => {
+                          try {
+                            setUploading((m) => ({ ...m, ["pdf-resume"]: 0 }));
+                            const url = await uploadFile(f, (p) =>
+                              setUploading((m) => ({ ...m, ["pdf-resume"]: p }))
+                            );
+                            update("pdf.url", url);
+                          } catch (err: any) {
+                            alert(err?.message || "上传失败");
+                          } finally {
+                            setUploading((m) => {
+                              const n = { ...m };
+                              delete n["pdf-resume"];
+                              return n;
+                            });
+                          }
+                        })();
+                      }}
+                    />
+                  </label>
+                  {progressBar("pdf-resume")}
                 </div>
               </Card>
 
               <Card title="封面图 / Hero 背景" icon={ImageIcon}>
                 <Field label="Hero 背景图 / Background Image URL">
-                  <Input
-                    value={draft.hero.backgroundImage}
-                    onChange={(v) => update("hero.backgroundImage", v)}
-                    placeholder="/cover.jpg 或 https://..."
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      value={draft.hero.backgroundImage}
+                      onChange={(v) => update("hero.backgroundImage", v)}
+                      placeholder="https://... 或右侧本机上传"
+                    />
+                    <label className="flex items-center gap-1 px-3 py-2 border border-white/20 text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5 shrink-0">
+                      <Upload size={12} /> 上传并裁剪
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          e.target.value = "";
+                          openCropper(f, (cropped) =>
+                            startUpload("hero-bg", cropped, (url) =>
+                              update("hero.backgroundImage", url)
+                            )
+                          );
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {progressBar("hero-bg")}
                 </Field>
                 <Field label="Hero 背景视频 / Background Video URL（可选）">
                   <Input
@@ -1080,6 +1255,18 @@ export default function Admin() {
           )}
         </section>
       </div>
+
+      {/* 图片裁剪预览窗口 */}
+      {cropJob && (
+        <ImageCropper
+          file={cropJob.file}
+          onConfirm={(f) => {
+            cropJob.apply(f);
+            setCropJob(null);
+          }}
+          onCancel={() => setCropJob(null)}
+        />
+      )}
     </main>
   );
 
