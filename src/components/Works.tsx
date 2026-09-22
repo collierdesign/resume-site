@@ -191,16 +191,6 @@ function WorkCard({
           </div>
         )}
 
-        {/* 编号 / 年份 */}
-        <div className="absolute inset-x-3 top-3 flex items-start justify-between md:inset-x-4 md:top-4">
-          <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/65 md:text-[10px]">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/45 md:text-[10px]">
-            {item.year}
-          </span>
-        </div>
-
         {/* 滑过时自下而上浮出的说明（work-veil：实底 + 磨砂，白底封面也清晰可读） */}
         <div className="work-veil absolute inset-x-0 bottom-0 translate-y-full px-3 py-3 transition-transform duration-[900ms] ease-silk group-hover:translate-y-0 md:px-4 md:py-4">
           <p className="line-clamp-3 text-[0.72rem] leading-[1.8] text-[color:var(--fg)]/80 md:text-[0.78rem]">
@@ -212,16 +202,21 @@ function WorkCard({
         </div>
       </div>
 
-      {/* 图片下方固定信息 */}
-      <div className="mt-3 flex items-baseline justify-between gap-3 md:mt-4 md:gap-4">
-        <h3
-          data-cursor-lens
-          className="w-anim display text-[1rem] leading-snug text-[color:var(--fg)] md:text-[1.35rem]"
-          style={W}
-        >
-          {item.title}
-        </h3>
-        <span className="eyebrow shrink-0 text-[8px] md:text-[9px]">{item.tag}</span>
+      {/* 图片下方固定信息：年份在上，标题与标签同行 */}
+      <div className="mt-3 md:mt-4">
+        <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/45 md:text-[10px]">
+          {item.year}
+        </span>
+        <div className="mt-1 flex items-baseline justify-between gap-3 md:gap-4">
+          <h3
+            data-cursor-lens
+            className="w-anim display text-[1rem] leading-snug text-[color:var(--fg)] md:text-[1.35rem]"
+            style={W}
+          >
+            {item.title}
+          </h3>
+          <span className="eyebrow shrink-0 text-[8px] md:text-[9px]">{item.tag}</span>
+        </div>
       </div>
     </motion.button>
   );
