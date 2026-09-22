@@ -219,21 +219,52 @@
   .cursor-aura {
     position: fixed;
     z-index: 70;
-    width: 46px;
-    height: 46px;
+    width: 34px;
+    height: 34px;
     pointer-events: none;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, .44);
-    background: rgba(255, 255, 255, .13);
-    box-shadow: 0 10px 28px rgba(22, 16, 12, .16), inset 0 1px 1px rgba(255,255,255,.45);
-    backdrop-filter: blur(8px) saturate(140%);
+    border: 1.5px solid rgba(24, 20, 16, .88);
+    background: rgba(24, 20, 16, .05);
+    /* 深色区块里的白色细描边，保证黑圈在任何背景上可见 */
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .14);
     opacity: 0;
     transform: translate(-50%, -50%);
-    transition: opacity .35s ease, width .35s cubic-bezier(.22,1,.36,1), height .35s cubic-bezier(.22,1,.36,1), background .35s ease;
+    transition: opacity .35s ease,
+      width .35s cubic-bezier(.22,1,.36,1),
+      height .35s cubic-bezier(.22,1,.36,1);
   }
 
-  .has-fine-pointer .cursor-aura { opacity: .8; }
-  .cursor-aura.is-lens { width: 92px; height: 92px; background: rgba(255,255,255,.25); backdrop-filter: blur(2px) saturate(180%) contrast(1.12); box-shadow: 0 16px 36px rgba(22,16,12,.2), inset 0 1px 1px rgba(255,255,255,.72); }
+  /* 中心黑点（"精准笔尖"感） */
+  .cursor-aura span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(24, 20, 16, .9);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .18);
+    transform: translate(-50%, -50%);
+    transition: width .3s ease, height .3s ease, opacity .3s ease;
+  }
+
+  .has-fine-pointer .cursor-aura { opacity: 1; }
+  /* 悬停可交互文字时，圈放大（镜片感） */
+  .cursor-aura.is-lens { width: 62px; height: 62px; }
+  .cursor-aura.is-lens span { width: 4px; height: 4px; }
+
+  /* 隐藏系统光标（仅精确指针设备），输入控件恢复 */
+  @media (prefers-reduced-motion: no-preference) {
+    html.has-fine-pointer body,
+    html.has-fine-pointer body * {
+      cursor: none !important;
+    }
+    html.has-fine-pointer input,
+    html.has-fine-pointer textarea,
+    html.has-fine-pointer select {
+      cursor: auto !important;
+    }
+  }
   [data-cursor-lens] { transition: transform .55s cubic-bezier(.22,1,.36,1), filter .55s ease; }
   [data-cursor-lens]:hover { transform: scale(1.018); filter: contrast(1.04); }
 
