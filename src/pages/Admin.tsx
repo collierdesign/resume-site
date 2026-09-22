@@ -21,30 +21,47 @@ import {
   login,
   logout,
   isAuthed,
-  setPassword,
   changePassword,
-  getPasswordHint,
-  isInitialized,
-  setupPassword,
+  cloudSaveConfig,
+  ADMIN_USER,
 } from "../lib/admin";
 import { useConfig, useConfigActions } from "../lib/useConfig";
 import { defaultConfig } from "../data/config";
 import type { SiteConfig, WorkItem } from "../types";
 
 const THEMES = [
-  { id: "dark", label: "Dark", preview: "#0a0a0a" },
-  { id: "light", label: "Light", preview: "#f5f5f0" },
-  { id: "paper", label: "Paper", preview: "#ede7d8" },
-  { id: "mono", label: "Mono", preview: "#000000" },
+  { id: "light", label: "純白", preview: "#ffffff" },
+  { id: "paper", label: "生成り", preview: "#f7f4ed" },
+  { id: "dark", label: "墨夜", preview: "#111110" },
+  { id: "mono", label: "純墨", preview: "#000000" },
 ] as const;
 
 const ACCENTS = [
-  { name: "Lime", value: "#c5f82e" },
-  { name: "Coral", value: "#ff5e3a" },
-  { name: "Amber", value: "#ffb547" },
-  { name: "Cyan", value: "#5eead4" },
-  { name: "Violet", value: "#a78bfa" },
-  { name: "Rose", value: "#fb7185" },
+  { name: "朱", value: "#b04630" },
+  { name: "藍", value: "#33556e" },
+  { name: "若竹", value: "#7d9174" },
+  { name: "藤", value: "#8b81c3" },
+  { name: "琥珀", value: "#a9761f" },
+  { name: "灰桜", value: "#b98b8b" },
+];
+
+const FONT_OPTIONS = [
+  {
+    label: "EB Garamond（英文衬线 · 推荐）",
+    value: "'EB Garamond', 'Noto Serif SC', 'Songti SC', STSong, SimSun, serif",
+  },
+  {
+    label: "思源宋体 / Noto Serif SC（中文宋体）",
+    value: "'Noto Serif SC', 'Songti SC', STSong, SimSun, serif",
+  },
+  {
+    label: "Noto Serif（英文衬线）",
+    value: "'Noto Serif', 'Noto Serif SC', 'Songti SC', SimSun, serif",
+  },
+  {
+    label: "系统宋体（SimSun / Songti SC）",
+    value: "SimSun, 'Songti SC', STSong, serif",
+  },
 ];
 
 const EMPTY_WORK: WorkItem = {
@@ -64,11 +81,13 @@ export default function Admin() {
   const cfg = useConfig();
   const { setConfig } = useConfigActions();
   const [authed, setAuthed] = useState(isAuthed());
-  const [tab, setTab] = useState<"profile" | "theme" | "works" | "pdf" | "system">(
+  const [tab, setTab] = useState<"profile" | "skills" | "theme" | "works" | "pdf" | "system">(
     "profile"
   );
   const [draft, setDraft] = useState<SiteConfig>(cfg);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
 
   useEffect(() => {
     setDraft(cfg);
@@ -90,15 +109,34 @@ export default function Admin() {
     });
   };
 
-  const save = () => {
+  const save = async () => {
     setConfig(draft);
-    setSavedAt(new Date().toLocaleTimeString());
+    setSaving(true);
+    setSaveErr("");
+    try {
+      const r = await cloudSaveConfig(draft);
+      if (r?.ok) {
+        setSavedAt(new Date().toLocaleTimeString());
+      } else {
+        setSaveErr(r?.error || "云端保存失败");
+      }
+    } catch (e: any) {
+      setSaveErr(String(e?.message || e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const reset = () => {
-    if (confirm("确认重置为默认示例数据？")) {
+    if (confirm("确认重置为默认示例数据？此操作会同步到云端，所有访客可见。")) {
       setDraft(defaultConfig);
       setConfig(defaultConfig);
+      cloudSaveConfig(defaultConfig)
+        .then((r) => {
+          if (r?.ok) setSavedAt(new Date().toLocaleTimeString());
+          else setSaveErr(r?.error || "云端同步失败");
+        })
+        .catch((e) => setSaveErr(String(e?.message || e)));
     }
   };
 
@@ -139,6 +177,11 @@ export default function Admin() {
                 ✓ Saved at {savedAt}
               </span>
             )}
+            {saveErr && (
+              <span className="text-[10px] uppercase tracking-[0.25em] text-rose-400 ml-4">
+                ✗ {saveErr}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -167,6 +210,7 @@ export default function Admin() {
         <aside className="lg:col-span-3 space-y-1">
           {[
             { id: "profile", label: "Profile & Content", icon: Type },
+            { id: "skills", label: "Skills & Notes", icon: Palette },
             { id: "works", label: `Works · ${draft.works.items.length}`, icon: ImageIcon },
             { id: "theme", label: "Theme & Layout", icon: Palette },
             { id: "pdf", label: "PDF & Hero", icon: Upload },
@@ -189,9 +233,10 @@ export default function Admin() {
           <div className="mt-8 pt-8 border-t border-white/10 space-y-2">
             <button
               onClick={save}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-black text-xs uppercase tracking-[0.2em] hover:bg-white/90 transition"
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-black text-xs uppercase tracking-[0.2em] hover:bg-white/90 transition disabled:opacity-60"
             >
-              <Save size={14} /> Save Changes
+              <Save size={14} /> {saving ? "Saving…" : "Save Changes"}
             </button>
             <button
               onClick={reset}
@@ -226,6 +271,44 @@ export default function Admin() {
                 />
               </Field>
 
+              <Field label="首屏一句话 / Hero Statement（鼠标滑过会变粗）">
+                <Textarea
+                  value={draft.hero.statement || ""}
+                  onChange={(v) => update("hero.statement", v)}
+                  rows={2}
+                />
+              </Field>
+
+              <Field label="流动英文 · 上行（用逗号分隔）">
+                <Input
+                  value={(draft.marquee?.top || []).join(", ")}
+                  onChange={(v) =>
+                    update(
+                      "marquee.top",
+                      v
+                        .split(/[,，]/)
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
+                />
+              </Field>
+
+              <Field label="流动英文 · 下行（用逗号分隔）">
+                <Input
+                  value={(draft.marquee?.bottom || []).join(", ")}
+                  onChange={(v) =>
+                    update(
+                      "marquee.bottom",
+                      v
+                        .split(/[,，]/)
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
+                />
+              </Field>
+
               <Field label="About Headline">
                 <Input
                   value={draft.about.headline}
@@ -244,6 +327,14 @@ export default function Admin() {
                   value={draft.about.paragraph2}
                   onChange={(v) => update("about.paragraph2", v)}
                   rows={4}
+                />
+              </Field>
+
+              <Field label="About 引文 / Quote（鼠标滑过会变粗）">
+                <Textarea
+                  value={draft.about.quote || ""}
+                  onChange={(v) => update("about.quote", v)}
+                  rows={2}
                 />
               </Field>
 
@@ -304,10 +395,39 @@ export default function Admin() {
             </Card>
           )}
 
+          {tab === "skills" && (
+            <Card title="Skills & Notes" icon={Palette}>
+              <p className="-mt-2 text-xs leading-relaxed text-white/50">
+                每一项技能都会显示为一张带图标和说明文字的卡片；这里的内容会同步到主页。
+              </p>
+              <Field label="Skills Headline">
+                <Input value={draft.skills.headline} onChange={(v) => update("skills.headline", v)} />
+              </Field>
+              <div className="space-y-4">
+                {draft.skills.groups.map((group, i) => (
+                  <div key={i} className="space-y-3 border border-white/10 bg-white/[0.02] p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">Skill card #{i + 1}</p>
+                      <button type="button" onClick={() => update("skills.groups", draft.skills.groups.filter((_, index) => index !== i))} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-rose-400 hover:text-rose-300"><Trash2 size={12} /> 删除</button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <Field label="分类 / Category"><Input value={group.category} onChange={(v) => updateSkill(i, "category", v)} /></Field>
+                      <Field label="图标 / Icon"><select value={group.icon || "Sparkles"} onChange={(e) => updateSkill(i, "icon", e.target.value)} className="w-full border border-white/10 bg-white/5 px-4 py-2 text-sm outline-none focus:border-white/40"><option value="PenTool">PenTool · 设计</option><option value="Box">Box · 工具</option><option value="Languages">Languages · 语言</option><option value="Sparkles">Sparkles · 其他</option></select></Field>
+                    </div>
+                    <Field label="说明文本 / Description"><Textarea value={group.description || ""} onChange={(v) => updateSkill(i, "description", v)} rows={2} /></Field>
+                    <Field label="技能项目（用逗号分隔）"><Textarea value={group.items.join(", ")} onChange={(v) => updateSkill(i, "items", v.split(/[,，]/).map((item) => item.trim()).filter(Boolean))} rows={2} /></Field>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => update("skills.groups", [...draft.skills.groups, { category: "New skill", icon: "Sparkles", description: "", items: [] }])} className="flex items-center gap-2 border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:bg-white/5"><Plus size={14} /> 添加技能卡</button>
+              <Field label="常用工具（用逗号分隔）"><Textarea value={draft.skills.tools.join(", ")} onChange={(v) => update("skills.tools", v.split(/[,，]/).map((item) => item.trim()).filter(Boolean))} rows={2} /></Field>
+            </Card>
+          )}
+
           {tab === "works" && (
             <Card title={`作品库 · 当前 ${draft.works.items.length} 件`} icon={ImageIcon}>
               <p className="text-xs text-white/50 -mt-2">
-                点击「添加作品」可无限新增。第一个作品会在主页以 featured 大卡展示，其余为小卡。
+                点击「添加作品」可无限新增。主页所有作品以等大卡片排列，鼠标滑过显示简介，点击弹出案例详情（图集可左右翻页、PDF 可在弹窗内直接阅读）。
               </p>
 
               <div className="space-y-4">
@@ -608,10 +728,11 @@ export default function Admin() {
                     onChange={(e) => update("theme.fontDisplay", e.target.value)}
                     className="w-full px-4 py-2 bg-white/5 border border-white/10 text-sm"
                   >
-                    <option value="'Playfair Display', serif">Playfair Display（衬线）</option>
-                    <option value="'Inter', sans-serif">Inter（无衬线）</option>
-                    <option value="'JetBrains Mono', monospace">JetBrains Mono（等宽）</option>
-                    <option value="'Cormorant Garamond', serif">Cormorant Garamond（优雅）</option>
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="字号缩放">
@@ -666,7 +787,7 @@ export default function Admin() {
                       className="w-5 h-5"
                     />
                     <span className="text-sm text-white/70">
-                      在首屏下方展示 PDF 区块（需在 Home.tsx 启用 &lt;PdfSection /&gt;）
+                      在首页 Skills 与 Contact 之间展示 PDF 区块（编号 05）
                     </span>
                   </label>
                 </Field>
@@ -680,7 +801,9 @@ export default function Admin() {
                   <p className="text-xs text-white/40 mt-2">
                     💡 把 PDF 放到 <code className="text-white/70">public/</code> 目录，
                     例如 <code className="text-white/70">public/resume.pdf</code>，路径写
-                    <code className="text-white/70">/resume.pdf</code> 即可。
+                    <code className="text-white/70">/resume.pdf</code> 即可。仓库里已自带一份示例
+                    <code className="text-white/70">public/resume.pdf</code>，替换成你自己的即可。
+                    首页区块内嵌预览，导航「Resume」进入全屏阅读器（<code className="text-white/70">/resume</code>）。
                   </p>
                 </Field>
 
@@ -779,8 +902,8 @@ export default function Admin() {
                   </label>
                 </div>
                 <p className="text-xs text-white/40 mt-3">
-                  当前数据存于浏览器 localStorage。建议每月导出一次备份，或把导出文件作为
-                  <code className="text-white/70"> src/data/config.ts </code> 提交到 GitHub。
+                  当前数据存于腾讯云 CloudBase 数据库，保存后所有访客实时同步。
+                  建议每月导出一次 JSON 备份到本地。
                 </p>
               </Card>
 
@@ -790,10 +913,16 @@ export default function Admin() {
 
               <Card title="注意事项" icon={AlertTriangle}>
                 <ul className="text-sm text-white/70 space-y-2 list-disc pl-5">
-                  <li>本后台的「修改」存于浏览器 localStorage，清缓存会丢失，请定期导出 JSON 备份。</li>
-                  <li>封面图 / Hero 背景图建议放 <code className="text-white/70">public/</code> 目录（最稳妥），不要用 base64。</li>
-                  <li>本后台没有默认密码——首次访问时自行设置。源码公开，密码属「防路人」级别。</li>
-                  <li>如需真正云端管理（多设备同步），需对接 Cloudflare KV 或 D1（后续可扩展）。</li>
+                  <li>
+                    配置真源是腾讯云 CloudBase 数据库：后台保存 → 云函数校验密码写入 →
+                    所有访客<b className="text-white">实时收到推送</b>（无需刷新页面、无需重新部署）。
+                  </li>
+                  <li>
+                    <code className="text-white/70">src/data/config.json</code> 仅作为首次初始化
+                    与云端不可用时的兜底数据。
+                  </li>
+                  <li>封面图 / Hero 背景图建议放 <code className="text-white/70">public/</code> 目录（最稳妥），不要用 base64（体积大会拖慢同步）。</li>
+                  <li>后台密码以 scrypt 加盐哈希存储在云端，首次访问 /admin 时自行设置，任何人都看不到明文。</li>
                   <li>更安全的方案：Cloudflare Pages → Settings → Access，给 /admin 路径加邮箱验证。</li>
                 </ul>
               </Card>
@@ -809,77 +938,21 @@ export default function Admin() {
     next[idx] = { ...next[idx], [key]: value };
     update("works.items", next);
   }
+
+  function updateSkill(idx: number, key: string, value: any) {
+    const next = [...draft.skills.groups];
+    next[idx] = { ...next[idx], [key]: value };
+    update("skills.groups", next);
+  }
 }
 
-/* ───────── 登录 / 首次设密 ───────── */
+/* ───────── 登录（CloudBase Auth 用户名密码） ───────── */
 function AuthGate({ onAuthed }: { onAuthed: () => void }) {
-  const initialized = isInitialized();
+  const [user, setUser] = useState(ADMIN_USER);
   const [pwd, setPwd] = useState("");
-  const [pwd2, setPwd2] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  if (!initialized) {
-    // 首次：设置初始密码
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white px-6">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-white/5 border border-white/10 mb-4">
-              <Lock size={20} />
-            </div>
-            <h1 className="font-display text-3xl mb-2">Welcome</h1>
-            <p className="text-xs uppercase tracking-[0.25em] text-white/40">
-              首次使用 · 设置一个后台密码
-            </p>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (pwd.length < 6) return setErr("密码至少 6 位");
-              if (pwd !== pwd2) return setErr("两次密码不一致");
-              setupPassword(pwd);
-              onAuthed();
-            }}
-          >
-            <input
-              type="password"
-              value={pwd}
-              onChange={(e) => setPwd(e.target.value)}
-              placeholder="新密码（至少 6 位）"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
-              autoFocus
-            />
-            <input
-              type="password"
-              value={pwd2}
-              onChange={(e) => setPwd2(e.target.value)}
-              placeholder="确认密码"
-              className="w-full mt-3 px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
-            />
-            {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
-            <button
-              type="submit"
-              className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition"
-            >
-              创建密码并进入
-            </button>
-          </form>
-          <p className="mt-6 text-center text-xs text-white/40 leading-relaxed">
-            密码仅保存在你的浏览器本地。<br />
-            <span className="text-white/60">务必记住 —— 源码公开，无法找回。</span>
-          </p>
-          <Link
-            to="/"
-            className="block mt-8 text-center text-xs uppercase tracking-[0.25em] text-white/40 hover:text-white"
-          >
-            ← Back home
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  // 已初始化：输入密码
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white px-6">
       <div className="w-full max-w-sm">
@@ -889,33 +962,43 @@ function AuthGate({ onAuthed }: { onAuthed: () => void }) {
           </div>
           <h1 className="font-display text-3xl mb-2">Admin</h1>
           <p className="text-xs uppercase tracking-[0.25em] text-white/40">
-            Enter password to continue
+            Sign in to continue
           </p>
         </div>
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            if (login(pwd)) {
-              onAuthed();
-            } else {
-              setErr("密码错误");
-            }
+            setBusy(true);
+            setErr("");
+            const r = await login(user, pwd);
+            setBusy(false);
+            if (r.ok) onAuthed();
+            else setErr(r.error || "登录失败");
           }}
         >
+          <input
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            placeholder="Username"
+            autoComplete="username"
+            className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
+            autoFocus
+          />
           <input
             type="password"
             value={pwd}
             onChange={(e) => setPwd(e.target.value)}
             placeholder="Password"
-            className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
-            autoFocus
+            autoComplete="current-password"
+            className="w-full mt-3 px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
           />
           {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
           <button
             type="submit"
-            className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition"
+            disabled={busy}
+            className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition disabled:opacity-60"
           >
-            Login
+            {busy ? "验证中…" : "Login"}
           </button>
         </form>
         <Link
@@ -936,6 +1019,7 @@ function ChangePasswordForm() {
   const [b, setB] = useState("");
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -949,25 +1033,27 @@ function ChangePasswordForm() {
         <Input value={b} onChange={setB} type="password" />
       </Field>
       <button
-        onClick={() => {
+        onClick={async () => {
           if (a.length < 6) return setErr("新密码至少 6 位");
           if (a !== b) return setErr("两次新密码不一致");
-          if (!changePassword(cur, a)) return setErr("当前密码错误");
-          setPassword(a); // 同步兜底（已登录态无需旧密码的便捷函数）
+          setBusy(true);
+          setErr("");
+          const r = await changePassword(cur, a);
+          setBusy(false);
+          if (!r.ok) return setErr(r.error || "当前密码错误");
           setCur("");
           setA("");
           setB("");
-          setErr("");
           setDone(true);
           setTimeout(() => setDone(false), 3000);
         }}
-        className="px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em]"
+        disabled={busy}
+        className="px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em] disabled:opacity-60"
       >
-        更新密码
+        {busy ? "更新中…" : "更新密码"}
       </button>
-      {done && <p className="text-emerald-400 text-xs">✓ 密码已更新</p>}
+      {done && <p className="text-emerald-400 text-xs">✓ 密码已更新（云端生效）</p>}
       {err && <p className="text-rose-400 text-xs">{err}</p>}
-      <p className="text-xs text-white/40">当前状态：{getPasswordHint()}</p>
     </div>
   );
 }

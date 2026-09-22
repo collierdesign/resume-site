@@ -5,14 +5,23 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-[color:var(--line)] px-6 md:px-12 py-8">
-      <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <p className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
-          © {year} {cfg.profile.name} · All rights reserved
+    <footer className="border-t border-[color:var(--line)] px-6 py-10 md:px-10 lg:px-16">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <p className="eyebrow flex items-center gap-3 text-[10px]">
+          <span className="seal" />
+          © {year} {cfg.profile.name}
         </p>
-        <p className="text-xs text-[color:var(--muted)]">
-          Designed with care · Hosted on Cloudflare
-        </p>
+
+        <div className="flex items-center gap-6">
+          <p className="eyebrow text-[10px]">Designed with care</p>
+          <span className="hidden h-3 w-px bg-[color:var(--line)] md:block" />
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="eyebrow text-[10px] transition-colors hover:text-[color:var(--accent)]"
+          >
+            ↑ Top
+          </button>
+        </div>
       </div>
     </footer>
   );

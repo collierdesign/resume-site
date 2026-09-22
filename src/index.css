@@ -2,72 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   设计系统 ·「余白」
+   纯白纸面 / 宋体为主 / 朱色极少量的点缀
+   简约不是一种风格，而是让质感被看见的方式。
+   ═══════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
-    --bg: #fafaf7;
-    --fg: #0a0a0a;
-    --fg-muted: #6b6b6b;
-    --fg-subtle: #999999;
-    --border: #e8e6e1;
-    --accent: #0a0a0a;
-    --link: #0a0a0a;
-  }
-
-  /* Theme: Dark */
-  [data-theme='dark'] {
-    --bg: #0a0a0a;
-    --fg: #fafaf7;
-    --fg-muted: #999999;
-    --fg-subtle: #5a5a5a;
-    --border: #1f1f1f;
-    --accent: #fafaf7;
-    --link: #fafaf7;
-  }
-
-  /* Theme: Paper Warm */
-  [data-theme='warm'] {
-    --bg: #f5f1ea;
-    --fg: #2a2520;
-    --fg-muted: #7a6f63;
-    --fg-subtle: #a89c8e;
-    --border: #e3dcd0;
-    --accent: #2a2520;
-    --link: #2a2520;
-  }
-
-  /* Theme: Pure Ink (highest contrast) */
-  [data-theme='ink'] {
+    /* ── 色彩 ─────────────────────────────── */
     --bg: #ffffff;
-    --fg: #000000;
-    --fg-muted: #555555;
-    --fg-subtle: #999999;
-    --border: #000000;
-    --accent: #000000;
-    --link: #000000;
+    --surface: #fbfaf8;
+    --fg: #141310;
+    --fg-muted: #8b8880;
+    --fg-subtle: #b6b3ab;
+    --border: #e9e7e2;
+    --line: #e9e7e2;
+    --muted: #8b8880;
+
+    --accent: #b04630; /* 朱 — 只用于极小面积的装饰 */
+    --accent-2: #33556e; /* 藍 */
+    --accent-3: #7d9174; /* 若竹 */
+
+    /* ── 排版 ─────────────────────────────── */
+    --font-display: "EB Garamond", "Noto Serif SC", "Songti SC", STSong, SimSun,
+      Georgia, serif;
+    --font-serif: "Noto Serif", "Noto Serif SC", "Songti SC", STSong, SimSun,
+      Georgia, serif;
+    --font-scale: 1;
+    --line-height: 1.8;
+    --radius: 0px;
+
+    color-scheme: light;
   }
 
   html {
+    font-size: calc(16px * var(--font-scale));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
   }
 
   body {
     background: var(--bg);
     color: var(--fg);
-    font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+    font-family: var(--font-serif);
     font-weight: 400;
-    font-feature-settings: 'ss01', 'cv11';
+    line-height: var(--line-height);
+    letter-spacing: 0.012em;
+    overflow-x: clip;
+    cursor: default;
     transition: background-color 0.6s ease, color 0.6s ease;
   }
 
-  ::selection {
-    background: var(--fg);
-    color: var(--bg);
+  .page-grain {
+    position: fixed;
+    z-index: 55;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   }
 
-  /* Custom scrollbar */
+  /* 中文标点更克制 */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: #ffffff;
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -76,16 +88,16 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--fg-muted);
-    opacity: 0.4;
-    border-radius: 4px;
+    background: var(--line);
+    border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--fg);
+    background: var(--fg-subtle);
   }
 }
 
 @layer components {
+  /* ── 布局 ─────────────────────────────── */
   .container-wide {
     @apply mx-auto w-full max-w-[1440px] px-6 md:px-10 lg:px-16;
   }
@@ -94,100 +106,345 @@
     @apply mx-auto w-full max-w-[920px] px-6 md:px-10;
   }
 
-  .heading-display {
-    font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif;
+  /* 区块统一留白节奏 */
+  .section-pad {
+    @apply py-24 md:py-32 lg:py-36;
+  }
+
+  /* ── 字体 ─────────────────────────────── */
+  .display {
+    font-family: var(--font-display);
     font-weight: 400;
-    letter-spacing: -0.02em;
-    line-height: 1;
+    letter-spacing: -0.015em;
+    line-height: 1.04;
   }
 
-  .heading-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+  .serif {
+    font-family: var(--font-serif);
+  }
+
+  /* 小标签：宋体、大写、宽字距 —— 代替原先的等宽字体 */
+  .eyebrow {
+    font-family: var(--font-serif);
+    font-size: 0.6875rem;
     font-weight: 500;
-    letter-spacing: 0.25em;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: var(--fg-muted);
+    color: var(--muted);
   }
 
+  .italic-serif {
+    font-family: var(--font-display);
+    font-style: italic;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* ── 颜色工具 ─────────────────────────── */
   .text-muted {
-    color: var(--fg-muted);
+    color: var(--muted);
   }
-
   .text-subtle {
     color: var(--fg-subtle);
   }
-
   .border-theme {
-    border-color: var(--border);
+    border-color: var(--line);
+  }
+  .rule {
+    height: 1px;
+    background: var(--line);
   }
 
-  .link-underline {
+  /* 朱色小方印 —— 全站最小的装饰单位 */
+  .seal {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+  }
+  .seal-line {
+    display: inline-block;
+    width: 18px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  /* ── 滑过变粗（可变字重，过渡才顺滑）──── */
+  .w-anim {
+    font-weight: var(--w-from, 400);
+    transition: font-weight 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+      letter-spacing 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.5s ease;
+  }
+  .w-anim:hover,
+  .group:hover .w-anim {
+    font-weight: var(--w-to, 700);
+  }
+
+  /* ── 细线由左向右生长 ─────────────────── */
+  .link-line {
     position: relative;
     display: inline-block;
   }
-  .link-underline::after {
-    content: '';
+  .link-line::after {
+    content: "";
     position: absolute;
-    bottom: -2px;
     left: 0;
+    bottom: -4px;
     width: 100%;
     height: 1px;
     background: currentColor;
-    transform: scaleX(1);
-    transform-origin: right;
-    transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
-  }
-  .link-underline:hover::after {
     transform: scaleX(0);
     transform-origin: left;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-line:hover::after {
+    transform: scaleX(1);
   }
 
   .hover-lift {
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.5s ease, color 0.5s ease;
   }
   .hover-lift:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
+  }
+
+  .cursor-aura {
+    position: fixed;
+    z-index: 70;
+    width: 46px;
+    height: 46px;
+    pointer-events: none;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .44);
+    background: rgba(255, 255, 255, .13);
+    box-shadow: 0 10px 28px rgba(22, 16, 12, .16), inset 0 1px 1px rgba(255,255,255,.45);
+    backdrop-filter: blur(8px) saturate(140%);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    transition: opacity .35s ease, width .35s cubic-bezier(.22,1,.36,1), height .35s cubic-bezier(.22,1,.36,1), background .35s ease;
+  }
+
+  .has-fine-pointer .cursor-aura { opacity: .8; }
+  .cursor-aura.is-lens { width: 92px; height: 92px; background: rgba(255,255,255,.25); backdrop-filter: blur(2px) saturate(180%) contrast(1.12); box-shadow: 0 16px 36px rgba(22,16,12,.2), inset 0 1px 1px rgba(255,255,255,.72); }
+  [data-cursor-lens] { transition: transform .55s cubic-bezier(.22,1,.36,1), filter .55s ease; }
+  [data-cursor-lens]:hover { transform: scale(1.018); filter: contrast(1.04); }
+
+  .dark-canvas {
+    position: relative;
+    --bg: #141412;
+    --surface: #1c1c19;
+    --fg: #f5f1ea;
+    --fg-muted: #aaa69e;
+    --fg-subtle: #716f68;
+    --line: #34342f;
+    --muted: #aaa69e;
+    background: var(--bg);
+    color: var(--fg);
   }
 }
 
 @layer utilities {
+  /* ── 纸感细颗粒（噪点，非噪波）─────────── */
   .grain {
     position: relative;
   }
   .grain::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.09;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ── 织物纤维：极淡的经纬线 ─────────────── */
+  .paper-fiber {
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        color-mix(in srgb, var(--fg) 2%, transparent) 0 1px,
+        transparent 1px 4px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--fg) 2%, transparent) 0 1px,
+        transparent 1px 4px
+      );
+  }
+
+  /* ── 制图淡网格（用于局部肌理底纹）──────── */
+  .fine-grid {
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in srgb, var(--fg) 6%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--fg) 6%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 76px 76px;
+  }
+  .fine-grid-fade {
+    -webkit-mask-image: radial-gradient(
+      ellipse at 70% 40%,
+      #000 20%,
+      transparent 72%
+    );
+    mask-image: radial-gradient(ellipse at 70% 40%, #000 20%, transparent 72%);
+  }
+
+  /* ── 斜纹肌理带（跑马灯底纹）────────────── */
+  .hatch-band {
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--fg) 3.2%, transparent) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
+  /* ── 视差装饰圆环 ───────────────────────── */
+  .ring-deco {
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--fg) 13%, transparent);
+  }
+  .ring-deco-accent {
+    border-radius: 9999px;
+    border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  /* ── 滚动导轨（明暗两面都可见的中性色）──── */
+  .rail-track {
+    background: rgba(140, 136, 126, 0.4);
+  }
+
+  /* ── 黑色毛玻璃：背后内容隐约可见并扭曲变形 ── */
+  .glass-warp {
+    -webkit-backdrop-filter: blur(14px) saturate(135%) brightness(0.85);
+    backdrop-filter: blur(14px) saturate(135%) brightness(0.85);
+  }
+  @supports (backdrop-filter: url("#glass-warp")) {
+    .glass-warp {
+      -webkit-backdrop-filter: blur(14px) saturate(135%) brightness(0.85)
+        url("#glass-warp");
+      backdrop-filter: blur(14px) saturate(135%) brightness(0.85)
+        url("#glass-warp");
+    }
+  }
+
+
+  /* ── 左右流动的英文条带 ────────────────── */
+  .marquee {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+  }
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    will-change: transform;
+  }
+  .fade-edges {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      #000 7%,
+      #000 93%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      #000 7%,
+      #000 93%,
+      transparent 100%
+    );
+  }
+
+  .vertical-rl {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
   }
 
   .text-balance {
     text-wrap: balance;
   }
 
-  .clip-text {
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
 
-/* Reveal animation utility (used with IntersectionObserver in lib/reveal.ts) */
+@keyframes marqueeLeft {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(var(--marquee-shift, -50%), 0, 0);
+  }
+}
+
+@keyframes marqueeRight {
+  from {
+    transform: translate3d(var(--marquee-shift, -50%), 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* 进场：淡出上移 */
 .reveal {
   opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(32px);
+  transition: opacity 1.1s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
 }
 
-.reveal-delay-1 { transition-delay: 0.1s; }
-.reveal-delay-2 { transition-delay: 0.2s; }
-.reveal-delay-3 { transition-delay: 0.3s; }
-.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-1 {
+  transition-delay: 0.1s;
+}
+.reveal-delay-2 {
+  transition-delay: 0.2s;
+}
+.reveal-delay-3 {
+  transition-delay: 0.3s;
+}
+.reveal-delay-4 {
+  transition-delay: 0.4s;
+}
+
+/* 尊重系统「减少动态效果」 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .marquee-track {
+    animation: none !important;
+  }
+  .cursor-aura { display: none; }
+  .page-grain { display: none; }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .w-anim {
+    transition: none;
+  }
+  .w-anim:hover,
+  .group:hover .w-anim {
+    font-weight: var(--w-from, 400);
+  }
+}

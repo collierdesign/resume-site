@@ -1,55 +1,78 @@
-// 简单的客户端 admin 认证。
-// 无默认密码：首次访问 /admin 时必须自行设置；之后凭密码登录。
-// 注意：源码在 GitHub 公开可见，所以这只是"防路人"的薄屏障。
-// 生产环境建议叠加 Cloudflare Access（详见 DEPLOY.md）。
-const PWD_KEY = "resume_admin_pwd";
-const AUTH_KEY = "resume_admin_authed";
+/**
+ * 管理员认证 —— CloudBase Auth 用户名密码登录。
+ * - 账号（siteadmin）已在控制台预创建；访客只读，登录后直连数据库写入。
+ * - "已登录" = 当前会话为非匿名登录（auth.currentUser && !isAnonymous）。
+ */
+import { tcbApp, ensureTcbAuth } from "./cloudbase";
 
-/** 是否已设置过密码（即首次设置流程完成） */
-export function isInitialized(): boolean {
-  if (typeof localStorage === "undefined") return false;
-  return !!localStorage.getItem(PWD_KEY);
+export const ADMIN_USER = "siteadmin";
+
+type FnResult = { ok: boolean; error?: string };
+
+function auth() {
+  return (tcbApp() as any).auth({ persistence: "local" });
 }
 
-/** 当前是否登录态 */
+/** 当前是否已登录管理员（非匿名会话） */
 export function isAuthed(): boolean {
-  if (typeof localStorage === "undefined") return false;
-  return localStorage.getItem(AUTH_KEY) === "1";
+  const u = auth().currentUser;
+  return !!u && !u.isAnonymous;
 }
 
-/** 设置初始密码（仅在未初始化时使用） */
-export function setupPassword(pwd: string) {
-  localStorage.setItem(PWD_KEY, pwd);
-  localStorage.setItem(AUTH_KEY, "1");
-}
-
-/** 校验密码并登录 */
-export function login(pwd: string): boolean {
-  const stored = localStorage.getItem(PWD_KEY);
-  if (stored && pwd === stored) {
-    localStorage.setItem(AUTH_KEY, "1");
-    return true;
+/**
+ * 用用户名 + 密码登录。
+ * 兼容中文 SDK 错误消息。
+ */
+export async function login(
+  username: string,
+  password: string
+): Promise<FnResult> {
+  if (!username || !password) {
+    return { ok: false, error: "请填写用户名与密码" };
   }
-  return false;
+  try {
+    // 先登出，清掉可能的匿名会话，避免 "已登录" 错误
+    await auth().signOut().catch(() => {});
+    await auth().signInWithPassword({ username, password });
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "登录失败" };
+  }
 }
 
+/** 退出登录 */
 export function logout() {
-  localStorage.removeItem(AUTH_KEY);
+  auth().signOut().catch(() => {});
 }
 
-/** 修改密码（需要当前密码校验） */
-export function changePassword(currentPwd: string, newPwd: string): boolean {
-  const stored = localStorage.getItem(PWD_KEY);
-  if (!stored || currentPwd !== stored) return false;
-  localStorage.setItem(PWD_KEY, newPwd);
-  return true;
+/**
+ * 修改密码 —— SDK 签名 updatePassword(newPassword, oldPassword)。
+ * UI 上需要用户提供当前密码作为身份验证。
+ */
+export async function changePassword(
+  currentPwd: string,
+  newPwd: string
+): Promise<FnResult> {
+  try {
+    const u = auth().currentUser;
+    if (!u || u.isAnonymous) {
+      return { ok: false, error: "请先登录" };
+    }
+    await u.updatePassword(newPwd, currentPwd);
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "修改失败" };
+  }
 }
 
-/** 仅修改密码（已登录状态下） */
-export function setPassword(newPwd: string) {
-  localStorage.setItem(PWD_KEY, newPwd);
-}
-
-export function getPasswordHint(): string {
-  return localStorage.getItem(PWD_KEY) ? "已自定义" : "未设置";
+/** 直接写数据库 —— 需已登录管理员（auth.uid == ADMIN_UID，由安全规则强制） */
+export async function cloudSaveConfig(config: unknown): Promise<FnResult> {
+  try {
+    await ensureTcbAuth();
+    const db = (tcbApp() as any).database();
+    await db.collection("config").doc("main").set(config);
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "保存失败" };
+  }
 }

@@ -34,3 +34,6 @@ Thumbs.db
 
 # Local data
 *.local
+
+# Local test scripts (contain credentials, never commit)
+scripts/

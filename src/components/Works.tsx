@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, X, ExternalLink, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { ArrowUpRight, Download } from "lucide-react";
+import { SectionHead } from "./SectionHead";
 import { useConfig } from "../lib/useConfig";
 
 type WorkItem = {
@@ -15,57 +16,70 @@ type WorkItem = {
   link?: string;
 };
 
+const W = { "--w-from": 400, "--w-to": 700 } as React.CSSProperties;
+
 export function Works() {
   const cfg = useConfig();
-  const works: WorkItem[] = cfg.works.items;
+  const works: WorkItem[] = cfg.works.items || [];
   const [active, setActive] = useState<number | null>(null);
 
-  if (!works || works.length === 0) return null;
+  if (works.length === 0) return null;
+
+  /* 奇偶分列 → 右列整体下沉，任何断点下都是两列错位 */
+  const leftCol = works.filter((_, i) => i % 2 === 0);
+  const rightCol = works.filter((_, i) => i % 2 === 1);
 
   return (
-    <section id="works" className="py-32 md:py-48 px-6 md:px-12">
-      <div className="mx-auto max-w-7xl">
-        {/* 标题区 */}
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-20 mb-12 md:mb-20">
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="md:col-span-3 text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]"
-          >
-            <span className="text-[color:var(--accent)]">/</span> 03 — Works
-          </motion.p>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            className="md:col-span-9 font-display text-[color:var(--fg)] leading-[1.05] tracking-tight text-[clamp(2rem,4.5vw,3.75rem)]"
-          >
-            {cfg.works.headline}
-          </motion.h2>
+    <section id="works" className="section-pad relative overflow-hidden">
+      <div className="relative mx-auto w-full max-w-[1440px] px-4 md:px-10 lg:px-16">
+        <SectionHead
+          index="03"
+          label="Works"
+          meta={`${String(works.length).padStart(2, "0")} Projects · 2023—2026`}
+        />
+
+        <div className="mt-10 flex flex-col gap-6 md:mt-16 md:flex-row md:items-end md:justify-between md:gap-16">
+          <Reveal>
+            <h2
+              data-cursor-lens
+              className="w-anim display text-balance text-[clamp(2.2rem,4.6vw,4.4rem)] leading-[1.08] text-[color:var(--fg)]"
+              style={W}
+            >
+              {cfg.works.headline}
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="max-w-[30ch] text-[0.88rem] leading-[1.9] text-[color:var(--muted)] md:pb-3 md:text-right">
+              选择一件作品，查看完整案例与过程记录。
+            </p>
+          </Reveal>
         </div>
 
-        {/* 统一等大网格：手机 2 列 / 桌面 3 列 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-          {works.map((w, i) => (
-            <WorkCard key={i} item={w} index={i} onOpen={() => setActive(i)} />
-          ))}
+        {/* 两列错位排布：右列下沉，列内画幅交替 */}
+        <div className="mt-14 grid grid-cols-2 gap-x-4 md:mt-20 md:gap-x-10 lg:gap-x-14">
+          <div className="flex flex-col gap-14 md:gap-24">
+            {leftCol.map((w, i) => (
+              <WorkCard
+                key={`L-${i}`}
+                item={w}
+                index={i * 2}
+                onOpen={() => setActive(i * 2)}
+              />
+            ))}
+          </div>
+          <div className="flex flex-col gap-14 pt-16 md:gap-24 md:pt-36 lg:pt-44">
+            {rightCol.map((w, i) => (
+              <WorkCard
+                key={`R-${i}`}
+                item={w}
+                index={i * 2 + 1}
+                onOpen={() => setActive(i * 2 + 1)}
+              />
+            ))}
+          </div>
         </div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, delay: 0.4 }}
-          className="mt-10 text-right font-mono text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)]"
-        >
-          {String(works.length).padStart(2, "0")} Projects · 2023—2026
-        </motion.p>
       </div>
 
-      {/* 模态弹窗 */}
       <AnimatePresence>
         {active !== null && works[active] && (
           <WorkModal
@@ -74,9 +88,7 @@ export function Works() {
             index={active}
             total={works.length}
             onClose={() => setActive(null)}
-            onPrev={() =>
-              setActive((active - 1 + works.length) % works.length)
-            }
+            onPrev={() => setActive((active - 1 + works.length) % works.length)}
             onNext={() => setActive((active + 1) % works.length)}
           />
         )}
@@ -85,7 +97,7 @@ export function Works() {
   );
 }
 
-/* ─── 卡片 ─── */
+/* ───────────────── 卡片 ───────────────── */
 function WorkCard({
   item,
   index,
@@ -95,78 +107,111 @@ function WorkCard({
   index: number;
   onOpen: () => void;
 }) {
+  const mediaRef = useRef<HTMLDivElement>(null);
+
+  /* 封面视差：滚过视口时图片在框内反向滑移 */
+  const { scrollYProgress } = useScroll({
+    target: mediaRef,
+    offset: ["start end", "end start"],
+  });
+  const imgY = useTransform(scrollYProgress, [0, 1], ["-7%", "7%"]);
+
   return (
     <motion.button
       onClick={onOpen}
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 32 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{
-        duration: 0.9,
-        delay: index * 0.05,
+        duration: 1,
+        delay: (index % 2) * 0.08,
         ease: [0.22, 1, 0.36, 1],
       }}
-      className="group relative aspect-[4/5] overflow-hidden border border-[color:var(--line)] bg-[color:var(--surface)] text-left"
+      className="group block w-full text-left"
     >
-      {/* 封面图 / 占位渐变 */}
-      {item.cover ? (
-        <img
-          src={item.cover}
-          alt={item.title}
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-110"
-        />
-      ) : (
-        <div
-          className="absolute inset-0 transition-transform duration-1000 group-hover:scale-110"
-          style={{
-            background: `radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent) 40%, transparent), transparent 60%), linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--accent) 15%, var(--bg)))`,
-          }}
-        />
-      )}
+      <div
+        ref={mediaRef}
+        className="relative aspect-video w-full overflow-hidden border border-[color:var(--line)]"
+      >
+        {/* 封面（加高 116% 以留出视差滑移余量） */}
+        {item.cover ? (
+          <motion.img
+            src={item.cover}
+            alt={item.title}
+            loading="lazy"
+            style={{ y: imgY }}
+            className="absolute -top-[8%] left-0 h-[116%] w-full object-cover grayscale-[18%] transition-[filter] duration-[1400ms] ease-silk group-hover:grayscale-0"
+          />
+        ) : (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(155deg, #fdfcfa 0%, #f4f2ed 58%, #ece7de 100%)",
+              }}
+            />
+            <div className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-[color:var(--accent)]/35" />
+          </>
+        )}
 
-      {/* 暗色遮罩 */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-90 group-hover:from-black/95 transition-all duration-500" />
+        {/* 编号 / 年份 */}
+        <div className="absolute inset-x-3 top-3 flex items-start justify-between md:inset-x-4 md:top-4">
+          <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/65 md:text-[10px]">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/45 md:text-[10px]">
+            {item.year}
+          </span>
+        </div>
 
-      {/* 顶部：编号 + 右上角图标 */}
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/90 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-sm">
-          {String(index + 1).padStart(2, "0")} · {item.year}
-        </span>
-        <motion.span
-          className="text-white/90 group-hover:text-[color:var(--accent)] transition-colors"
-          whileHover={{ rotate: 45 }}
-        >
-          <ArrowUpRight size={20} />
-        </motion.span>
+        {/* 滑过时自下而上浮出的说明 */}
+        <div className="absolute inset-x-0 bottom-0 translate-y-full bg-[color:var(--bg)]/94 px-3 py-3 backdrop-blur-sm transition-transform duration-[900ms] ease-silk group-hover:translate-y-0 md:px-4 md:py-4">
+          <p className="line-clamp-3 text-[0.72rem] leading-[1.8] text-[color:var(--fg)]/80 md:text-[0.78rem]">
+            {item.description}
+          </p>
+          <span className="eyebrow mt-2 flex items-center gap-2 text-[9px] text-[color:var(--accent)] md:mt-3">
+            View case <ArrowUpRight size={11} />
+          </span>
+        </div>
       </div>
 
-      {/* 底部：tag + 标题 + hover 划入描述 */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 z-10">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-white/70 mb-1.5 transform transition-transform duration-500 group-hover:-translate-y-1">
-          {item.tag}
-        </p>
-        <h3 className="font-display text-white leading-[1.1] text-lg md:text-xl transform transition-transform duration-500 group-hover:-translate-y-1">
+      {/* 图片下方固定信息 */}
+      <div className="mt-3 flex items-baseline justify-between gap-3 md:mt-4 md:gap-4">
+        <h3
+          data-cursor-lens
+          className="w-anim display text-[1rem] leading-snug text-[color:var(--fg)] md:text-[1.35rem]"
+          style={W}
+        >
           {item.title}
         </h3>
-
-        {/* Hover 划入描述 */}
-        <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-500 ease-out">
-          <div className="overflow-hidden">
-            <p className="pt-2 text-xs md:text-sm text-white/85 leading-relaxed line-clamp-3">
-              {item.description}
-            </p>
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.3em] text-[color:var(--accent)]">
-              View case <ArrowUpRight size={12} />
-            </p>
-          </div>
-        </div>
+        <span className="eyebrow shrink-0 text-[8px] md:text-[9px]">{item.tag}</span>
       </div>
     </motion.button>
   );
 }
 
-/* ─── 模态弹窗 ─── */
+/* ───────────────── 进场 ───────────────── */
+function Reveal({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 26 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ───────────────── 弹窗 ───────────────── */
 function WorkModal({
   item,
   index,
@@ -182,7 +227,6 @@ function WorkModal({
   onPrev: () => void;
   onNext: () => void;
 }) {
-  // 锁定 body 滚动 + ESC 关闭
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -198,144 +242,132 @@ function WorkModal({
     };
   }, [onClose, onPrev, onNext]);
 
-  // 合并 cover + gallery 用于轮播
   const gallery: string[] = item.gallery?.length
     ? item.gallery
     : item.cover
-    ? [item.cover]
-    : [];
+      ? [item.cover]
+      : [];
   const [activeImg, setActiveImg] = useState(0);
+
+  const navBtn =
+    "eyebrow text-[10px] text-[color:var(--muted)] transition-colors hover:text-[color:var(--fg)]";
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/85 backdrop-blur-md p-0 md:p-6"
+      transition={{ duration: 0.35 }}
+      className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/40 p-0 md:items-center md:p-8"
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, y: 60, scale: 0.97 }}
+        initial={{ opacity: 0, y: 40, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 60, scale: 0.97 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full md:max-w-5xl h-full md:h-auto md:max-h-[90vh] bg-[color:var(--bg)] border border-[color:var(--line)] overflow-hidden flex flex-col"
+        exit={{ opacity: 0, y: 40, scale: 0.985 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="relative flex h-full w-full flex-col overflow-hidden border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 顶部 bar */}
-        <div className="sticky top-0 z-20 flex items-center justify-between px-5 md:px-8 py-4 border-b border-[color:var(--line)] bg-[color:var(--bg)]/95 backdrop-blur">
-          <span className="font-mono text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
+        {/* SVG 折射滤镜：玻璃背后的内容被位移扭曲（Chromium 生效，其余降级为纯磨砂） */}
+        <svg aria-hidden className="pointer-events-none absolute h-0 w-0">
+          <filter id="glass-warp" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="7" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="26" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </svg>
+
+        {/* 玻璃层 1：折射扭曲 + 压暗；层 2：黑色镜面渐变 */}
+        <div className="glass-warp pointer-events-none absolute inset-0" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#1a1a19]/72 via-[#0c0c0b]/70 to-[#161613]/78" />
+        {/* 玻璃上缘高光 */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
+        {/* 顶栏 */}
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-xl md:px-8">
+          <span className="eyebrow tnum text-[10px]">
             {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onPrev}
-              aria-label="Previous"
-              className="p-2 text-[color:var(--muted)] hover:text-[color:var(--fg)] hover:bg-[color:var(--surface)] transition-colors"
-            >
-              <ChevronLeft size={16} />
+          <div className="flex items-center gap-6">
+            <button onClick={onPrev} className={navBtn} aria-label="Previous">
+              ← Prev
             </button>
-            <button
-              onClick={onNext}
-              aria-label="Next"
-              className="p-2 text-[color:var(--muted)] hover:text-[color:var(--fg)] hover:bg-[color:var(--surface)] transition-colors"
-            >
-              <ChevronRight size={16} />
+            <button onClick={onNext} className={navBtn} aria-label="Next">
+              Next →
             </button>
             <button
               onClick={onClose}
+              className="eyebrow text-[10px] text-[color:var(--fg)]"
               aria-label="Close"
-              className="p-2 ml-2 text-[color:var(--muted)] hover:text-[color:var(--fg)] hover:bg-[color:var(--surface)] transition-colors"
             >
-              <X size={18} />
+              Close
             </button>
           </div>
         </div>
 
-        {/* 内容滚动区 */}
-        <div className="flex-1 overflow-y-auto">
-          {/* 图集轮播 */}
+        <div className="relative z-10 flex-1 overflow-y-auto">
+          {/* 图集 */}
           {gallery.length > 0 && (
-            <div className="relative w-full bg-black">
+            <div className="relative bg-black/25">
               <img
                 src={gallery[activeImg]}
                 alt={item.title}
-                className="w-full max-h-[60vh] md:max-h-[55vh] object-contain mx-auto"
+                className="mx-auto max-h-[55vh] w-full object-contain md:max-h-[58vh]"
               />
               {gallery.length > 1 && (
-                <>
+                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3">
                   <button
                     onClick={() =>
                       setActiveImg((activeImg - 1 + gallery.length) % gallery.length)
                     }
-                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur text-white/90 hover:bg-black/70"
-                    aria-label="Previous image"
+                    className="eyebrow text-[10px] text-[color:var(--fg)]/70 hover:text-[color:var(--fg)]"
                   >
-                    <ChevronLeft size={20} />
+                    ←
                   </button>
+                  <span className="eyebrow tnum text-[9px]">
+                    {activeImg + 1} / {gallery.length}
+                  </span>
                   <button
                     onClick={() => setActiveImg((activeImg + 1) % gallery.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur text-white/90 hover:bg-black/70"
-                    aria-label="Next image"
+                    className="eyebrow text-[10px] text-[color:var(--fg)]/70 hover:text-[color:var(--fg)]"
                   >
-                    <ChevronRight size={20} />
+                    →
                   </button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                    {gallery.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setActiveImg(i)}
-                        className={`h-1.5 transition-all ${
-                          i === activeImg
-                            ? "w-6 bg-white"
-                            : "w-1.5 bg-white/40 hover:bg-white/70"
-                        }`}
-                        aria-label={`Image ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                </>
+                </div>
               )}
             </div>
           )}
 
-          {/* 缩略图条 */}
+          {/* 缩略图 */}
           {gallery.length > 1 && (
-            <div className="flex gap-2 p-4 md:px-8 overflow-x-auto border-b border-[color:var(--line)]">
+            <div className="no-scrollbar flex gap-3 overflow-x-auto border-b border-[color:var(--line)] px-5 py-4 md:px-8">
               {gallery.map((src, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveImg(i)}
-                  className={`shrink-0 w-16 h-16 border transition-all ${
+                  className={`h-14 w-14 shrink-0 overflow-hidden border transition-all duration-500 ${
                     i === activeImg
-                      ? "border-[color:var(--accent)] opacity-100"
-                      : "border-[color:var(--line)] opacity-50 hover:opacity-80"
+                      ? "border-[color:var(--accent)]"
+                      : "border-white/15 opacity-45 hover:opacity-80"
                   }`}
                 >
-                  <img
-                    src={src}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={src} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
           )}
 
-          {/* PDF 嵌入预览 */}
+          {/* PDF */}
           {item.pdf && (
             <div className="border-b border-[color:var(--line)]">
-              <div className="flex items-center justify-between px-5 md:px-8 py-3 border-b border-[color:var(--line)] bg-[color:var(--surface)]">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)]">
-                  PDF Document
-                </p>
+              <div className="flex items-center justify-between border-b border-[color:var(--line)] px-5 py-3 md:px-8">
+                <p className="eyebrow text-[10px]">PDF Document</p>
                 <a
                   href={item.pdf}
                   target="_blank"
                   rel="noreferrer"
                   download
-                  className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.25em] text-[color:var(--accent)] hover:underline"
+                  className="eyebrow flex items-center gap-2 text-[10px] text-[color:var(--accent)]"
                 >
                   <Download size={12} /> Download
                 </a>
@@ -343,58 +375,45 @@ function WorkModal({
               <iframe
                 src={item.pdf}
                 title={`${item.title} PDF`}
-                className="w-full h-[60vh] md:h-[70vh] bg-white"
+                className="h-[60vh] w-full bg-white md:h-[68vh]"
               />
             </div>
           )}
 
-          {/* 标题 + 描述 */}
-          <div className="px-5 md:px-8 py-8 md:py-10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--accent)] mb-3 inline-flex items-center gap-2">
-              <span className="h-px w-6 bg-[color:var(--accent)]" />
+          {/* 文字 */}
+          <div className="px-5 py-9 md:px-8 md:py-12">
+            <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
+              <span className="seal-line" />
               {item.tag} · {item.year}
             </p>
-            <h3 className="font-display text-[color:var(--fg)] leading-[1.05] tracking-tight text-[clamp(1.75rem,4vw,3rem)] mb-6">
+            <h3 className="display mt-5 text-[clamp(1.6rem,3.6vw,2.75rem)] leading-[1.15] text-[color:var(--fg)]">
               {item.title}
             </h3>
 
             {item.role && (
-              <div className="mb-6">
-                <p className="text-[10px] uppercase tracking-[0.25em] text-[color:var(--muted)] mb-1">
-                  Role
-                </p>
-                <p className="text-sm text-[color:var(--fg)]/85 leading-relaxed">
-                  {item.role}
-                </p>
-              </div>
+              <p className="mt-4 text-sm text-[color:var(--muted)]">
+                <span className="eyebrow mr-3 text-[10px]">Role</span>
+                {item.role}
+              </p>
             )}
 
-            <p className="text-[color:var(--fg)]/90 leading-relaxed text-sm md:text-base whitespace-pre-line">
+            <div className="rule my-8" />
+
+            <p className="whitespace-pre-line text-[0.92rem] leading-[1.95] text-[color:var(--fg)]/80">
               {item.description}
             </p>
 
             {item.link && (
-              <div className="mt-8">
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group inline-flex items-center gap-2 px-5 py-3 border border-[color:var(--accent)] text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-[color:var(--bg)] transition-all duration-300"
-                >
-                  Visit live
-                  <ExternalLink size={14} />
-                </a>
-              </div>
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noreferrer"
+                className="group mt-10 inline-flex items-center gap-3 border border-[color:var(--fg)] px-6 py-3 text-[11px] uppercase tracking-[0.25em] text-[color:var(--fg)] transition-colors duration-500 hover:bg-[color:var(--fg)] hover:text-[color:var(--bg)]"
+              >
+                Visit live
+                <ArrowUpRight size={13} />
+              </a>
             )}
-
-            {/* 底部装饰 */}
-            <div className="mt-12 flex items-center gap-2">
-              <span className="h-px flex-1 bg-[color:var(--line)]" />
-              <span className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)]">
-                End of case
-              </span>
-              <span className="h-px flex-1 bg-[color:var(--line)]" />
-            </div>
           </div>
         </div>
       </motion.div>

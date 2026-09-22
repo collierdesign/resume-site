@@ -45,7 +45,7 @@ export default function Resume() {
 
           const canvas = document.createElement("canvas");
           canvas.className =
-            "block mx-auto mb-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] bg-white";
+            "block mx-auto mb-6 border border-[color:var(--line)] bg-white shadow-[0_24px_50px_-28px_rgba(20,19,16,0.35)]";
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           container.appendChild(canvas);

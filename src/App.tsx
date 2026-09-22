@@ -4,11 +4,14 @@ import { ConfigProvider } from "./lib/useConfig";
 import Home from "./pages/Home";
 import Resume from "./pages/Resume";
 import Admin from "./pages/Admin";
+import { CursorAura } from "./components/CursorAura";
 
 export default function App() {
   return (
     <ConfigProvider>
       <BrowserRouter>
+        <div className="page-grain" aria-hidden="true" />
+        <CursorAura />
         <Routes>
           <Route path="/admin" element={<Admin />} />
           <Route

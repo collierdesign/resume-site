@@ -46,6 +46,10 @@ export interface WorkItem {
 export interface SkillGroup {
   category: string;
   items: string[];
+  /** 展示在技能卡片内的简短说明 */
+  description?: string;
+  /** lucide 图标名称，例如 PenTool、Box、Languages */
+  icon?: string;
 }
 
 export interface Social {
@@ -75,14 +79,23 @@ export interface SiteConfig {
   nav: NavItem[];
   hero: {
     eyebrow: string;
+    /** 首屏那一句话（鼠标滑过会变粗） */
+    statement: string;
     backgroundImage: string;
     backgroundVideo: string;
     quickFacts: QuickFact[];
+  };
+  /** 左右流动的英文条带 */
+  marquee: {
+    top: string[];
+    bottom: string[];
   };
   about: {
     headline: string;
     paragraph1: string;
     paragraph2: string;
+    /** 区块中那句独立的引文（鼠标滑过会变粗） */
+    quote: string;
     stats: Stat[];
   };
   experience: {
