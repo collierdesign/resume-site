@@ -375,7 +375,7 @@ function WorkModal({
           if (info.offset.y < -half || info.velocity.y < -700) onClose();
           else if (info.offset.y > 120 || info.velocity.y > 600) onClose();
         }}
-        className="relative flex h-[95vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 bg-[#141412] shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-transparent md:select-text md:rounded-none"
+        className="relative flex h-[85vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 bg-[#141412] shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-transparent md:select-text md:rounded-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 玻璃层 1：磨砂压暗（手机端实底不磨砂）；层 2：黑色镜面渐变 */}
@@ -396,12 +396,12 @@ function WorkModal({
           }}
         >
           {/* 手机端抽屉把手（朱红色，深色底上一眼可见） */}
-          <div className="flex justify-center pb-1.5 pt-3 md:hidden">
+          <div className="flex justify-center pb-1 pt-2.5 md:hidden">
             <span className="h-1.5 w-14 rounded-full bg-[color:var(--accent)]" />
           </div>
 
           {/* 顶栏（手机端白底红字，桌面端保持黑色玻璃） */}
-          <div className="flex items-center justify-between border-b border-black/10 bg-white px-5 py-4 md:border-white/10 md:bg-black/35 md:backdrop-blur-xl md:px-8">
+          <div className="flex items-center justify-between border-b border-black/10 bg-white px-5 py-3 md:border-white/10 md:bg-black/35 md:backdrop-blur-xl md:px-8 md:py-4">
             <span className="eyebrow tnum text-[10px] text-[#141310]/55 md:text-inherit">
               {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
             </span>
@@ -430,20 +430,20 @@ function WorkModal({
             </div>
           </div>
 
-          {/* 标题区：固定在顶部，不随图片滚动；手机端白底黑字（红字点缀），桌面端黑色玻璃 */}
-          <div className="relative z-20 shrink-0 border-b border-black/10 bg-white px-5 py-6 md:border-white/10 md:bg-black/55 md:backdrop-blur-xl md:px-8 md:py-8">
+          {/* 标题区：固定在顶部，不随图片滚动；手机端白底黑字（红字点缀）、压缩占位给图集让空间 */}
+          <div className="relative z-20 shrink-0 border-b border-black/10 bg-white px-5 py-4 md:border-white/10 md:bg-black/55 md:backdrop-blur-xl md:px-8 md:py-8">
             <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
               <span className="seal-line" />
               {item.tag} · {item.year}
             </p>
-            <h3 className="display mt-4 text-[clamp(1.5rem,3.2vw,2.5rem)] leading-[1.15] text-[#141310] md:text-[color:var(--fg)]">
+            <h3 className="display mt-2.5 text-[1.4rem] leading-[1.2] text-[#141310] md:mt-4 md:text-[clamp(1.5rem,3.2vw,2.5rem)] md:leading-[1.15] md:text-[color:var(--fg)]">
               {item.title}
             </h3>
-            <p className="mt-4 line-clamp-4 whitespace-pre-line text-[0.82rem] leading-[1.85] text-[#141310]/70 md:text-[0.88rem] md:text-[color:var(--fg)]/65">
+            <p className="mt-2.5 line-clamp-2 whitespace-pre-line text-[0.8rem] leading-[1.75] text-[#141310]/70 md:mt-4 md:line-clamp-4 md:text-[0.88rem] md:text-[color:var(--fg)]/65">
               {item.description}
             </p>
             {item.role && (
-              <p className="mt-3 text-sm text-[#141310]/60 md:text-[color:var(--muted)]">
+              <p className="mt-2 text-[0.8rem] text-[#141310]/60 md:mt-3 md:text-sm md:text-[color:var(--muted)]">
                 <span className="eyebrow mr-3 text-[10px]">Role</span>
                 {item.role}
               </p>
