@@ -55,9 +55,21 @@ export function Works() {
           </Reveal>
         </div>
 
-        {/* 两列错位排布：右列下沉，列内画幅交替 */}
-        <div className="mt-14 grid grid-cols-2 gap-x-4 md:mt-20 md:gap-x-10 lg:gap-x-14">
-          <div className="flex flex-col gap-14 md:gap-24">
+        {/* 移动端：单列大图（顺序排列） */}
+        <div className="mt-14 flex flex-col gap-14 md:hidden">
+          {works.map((w, i) => (
+            <WorkCard
+              key={`M-${i}`}
+              item={w}
+              index={i}
+              onOpen={() => setActive(i)}
+            />
+          ))}
+        </div>
+
+        {/* 桌面端：两列错位排布，右列下沉 */}
+        <div className="hidden md:mt-20 md:grid md:grid-cols-2 md:gap-x-10 lg:gap-x-14">
+          <div className="flex flex-col gap-24">
             {leftCol.map((w, i) => (
               <WorkCard
                 key={`L-${i}`}
@@ -67,7 +79,7 @@ export function Works() {
               />
             ))}
           </div>
-          <div className="flex flex-col gap-14 pt-16 md:gap-24 md:pt-36 lg:pt-44">
+          <div className="flex flex-col gap-24 md:pt-36 lg:pt-44">
             {rightCol.map((w, i) => (
               <WorkCard
                 key={`R-${i}`}
