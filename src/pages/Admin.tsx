@@ -109,16 +109,20 @@ export default function Admin() {
     });
   };
 
+  /** 草稿与云端是否不一致（未保存指示） */
+  const dirty = JSON.stringify(draft) !== JSON.stringify(cfg);
+
   const save = async () => {
-    setConfig(draft);
     setSaving(true);
     setSaveErr("");
     try {
       const r = await cloudSaveConfig(draft);
       if (r?.ok) {
+        // 成功才同步到本地 config（失败保持本地脏状态，提示用户原因）
+        setConfig(draft);
         setSavedAt(new Date().toLocaleTimeString());
       } else {
-        setSaveErr(r?.error || "云端保存失败");
+        setSaveErr(r?.error || "云端保存失败 / Cloud save failed");
       }
     } catch (e: any) {
       setSaveErr(String(e?.message || e));
@@ -130,11 +134,12 @@ export default function Admin() {
   const reset = () => {
     if (confirm("确认重置为默认示例数据？此操作会同步到云端，所有访客可见。")) {
       setDraft(defaultConfig);
-      setConfig(defaultConfig);
       cloudSaveConfig(defaultConfig)
         .then((r) => {
-          if (r?.ok) setSavedAt(new Date().toLocaleTimeString());
-          else setSaveErr(r?.error || "云端同步失败");
+          if (r?.ok) {
+            setConfig(defaultConfig);
+            setSavedAt(new Date().toLocaleTimeString());
+          } else setSaveErr(r?.error || "云端同步失败 / Cloud sync failed");
         })
         .catch((e) => setSaveErr(String(e?.message || e)));
     }
@@ -171,10 +176,17 @@ export default function Admin() {
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Settings size={16} className="text-white/60" />
-            <span className="font-display text-base">Admin Console</span>
-            {savedAt && (
+            <span className="font-display text-base">
+              后台管理 <span className="text-white/40">/ Admin Console</span>
+            </span>
+            {dirty && !saveErr && (
+              <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400 ml-4">
+                ● 未保存 · Unsaved
+              </span>
+            )}
+            {!dirty && savedAt && (
               <span className="text-[10px] uppercase tracking-[0.25em] text-emerald-400 ml-4">
-                ✓ Saved at {savedAt}
+                ✓ 已保存 · Saved {savedAt}
               </span>
             )}
             {saveErr && (
@@ -189,7 +201,7 @@ export default function Admin() {
               target="_blank"
               className="flex items-center gap-1 px-3 py-1.5 text-[10px] uppercase tracking-[0.25em] text-white/60 hover:text-white border border-white/10 hover:border-white/30"
             >
-              <Eye size={12} /> Preview
+              <Eye size={12} /> 预览 Preview
             </Link>
             <button
               onClick={() => {
@@ -199,7 +211,7 @@ export default function Admin() {
               }}
               className="flex items-center gap-1 px-3 py-1.5 text-[10px] uppercase tracking-[0.25em] text-white/60 hover:text-white border border-white/10 hover:border-white/30"
             >
-              <LogOut size={12} /> Logout
+              <LogOut size={12} /> 退出 Logout
             </button>
           </div>
         </div>
@@ -207,26 +219,35 @@ export default function Admin() {
 
       <div className="mx-auto max-w-7xl px-6 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* 侧边栏 */}
-        <aside className="lg:col-span-3 space-y-1">
+        <aside className="lg:col-span-3 space-y-1 lg:sticky lg:top-24 self-start">
           {[
-            { id: "profile", label: "Profile & Content", icon: Type },
-            { id: "skills", label: "Skills & Notes", icon: Palette },
-            { id: "works", label: `Works · ${draft.works.items.length}`, icon: ImageIcon },
-            { id: "theme", label: "Theme & Layout", icon: Palette },
-            { id: "pdf", label: "PDF & Hero", icon: Upload },
-            { id: "system", label: "System", icon: Settings },
+            { id: "profile", zh: "内容与档案", en: "Profile & Content", icon: Type },
+            { id: "skills", zh: "技能与随笔", en: "Skills & Notes", icon: Palette },
+            { id: "works", zh: "作品库", en: `Works · ${draft.works.items.length}`, icon: ImageIcon },
+            { id: "theme", zh: "主题与排版", en: "Theme & Layout", icon: Palette },
+            { id: "pdf", zh: "PDF 与首屏", en: "PDF & Hero", icon: Upload },
+            { id: "system", zh: "系统", en: "System", icon: Settings },
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id as any)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition border ${
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition border ${
                 tab === t.id
                   ? "bg-white text-black border-white"
                   : "bg-transparent text-white/70 border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
-              <t.icon size={14} />
-              {t.label}
+              <t.icon size={14} className="shrink-0" />
+              <span className="flex flex-col leading-tight">
+                <span className="text-sm">{t.zh}</span>
+                <span
+                  className={`text-[9px] uppercase tracking-[0.2em] ${
+                    tab === t.id ? "text-black/50" : "text-white/30"
+                  }`}
+                >
+                  {t.en}
+                </span>
+              </span>
             </button>
           ))}
 
@@ -236,13 +257,13 @@ export default function Admin() {
               disabled={saving}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-black text-xs uppercase tracking-[0.2em] hover:bg-white/90 transition disabled:opacity-60"
             >
-              <Save size={14} /> {saving ? "Saving…" : "Save Changes"}
+              <Save size={14} /> {saving ? "保存中… Saving…" : "保存更改 · Save Changes"}
             </button>
             <button
               onClick={reset}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-transparent text-white/60 text-xs uppercase tracking-[0.2em] hover:bg-white/5 transition"
             >
-              <RefreshCw size={14} /> Reset to demo
+              <RefreshCw size={14} /> 重置示例 · Reset to demo
             </button>
           </div>
         </aside>
@@ -250,7 +271,7 @@ export default function Admin() {
         {/* 内容区 */}
         <section className="lg:col-span-9 space-y-8">
           {tab === "profile" && (
-            <Card title="Profile" icon={Type}>
+            <Card title="个人档案" subtitle="Profile" icon={Type}>
               <Field label="姓名 / Name">
                 <Input value={draft.profile.name} onChange={(v) => update("profile.name", v)} />
               </Field>
@@ -279,7 +300,7 @@ export default function Admin() {
                 />
               </Field>
 
-              <Field label="流动英文 · 上行（用逗号分隔）">
+              <Field label="流动文字 · 上行 / Marquee Top（逗号分隔）">
                 <Input
                   value={(draft.marquee?.top || []).join(", ")}
                   onChange={(v) =>
@@ -294,7 +315,7 @@ export default function Admin() {
                 />
               </Field>
 
-              <Field label="流动英文 · 下行（用逗号分隔）">
+              <Field label="流动文字 · 下行 / Marquee Bottom（逗号分隔）">
                 <Input
                   value={(draft.marquee?.bottom || []).join(", ")}
                   onChange={(v) =>
@@ -309,20 +330,20 @@ export default function Admin() {
                 />
               </Field>
 
-              <Field label="About Headline">
+              <Field label="About 标题 / Headline">
                 <Input
                   value={draft.about.headline}
                   onChange={(v) => update("about.headline", v)}
                 />
               </Field>
-              <Field label="About 段落 1">
+              <Field label="About 段落 1 / Paragraph 1">
                 <Textarea
                   value={draft.about.paragraph1}
                   onChange={(v) => update("about.paragraph1", v)}
                   rows={4}
                 />
               </Field>
-              <Field label="About 段落 2">
+              <Field label="About 段落 2 / Paragraph 2">
                 <Textarea
                   value={draft.about.paragraph2}
                   onChange={(v) => update("about.paragraph2", v)}
@@ -338,7 +359,7 @@ export default function Admin() {
                 />
               </Field>
 
-              <Field label="Experience Headline">
+              <Field label="Experience 标题 / Headline">
                 <Input
                   value={draft.experience.headline}
                   onChange={(v) => update("experience.headline", v)}
@@ -350,7 +371,7 @@ export default function Admin() {
                   <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
                     Experience #{i + 1}
                   </p>
-                  <Field label="Period">
+                  <Field label="时间段 / Period">
                     <Input
                       value={it.period}
                       onChange={(v) => {
@@ -370,7 +391,7 @@ export default function Admin() {
                       }}
                     />
                   </Field>
-                  <Field label="Company">
+                  <Field label="公司 / Company">
                     <Input
                       value={it.company}
                       onChange={(v) => {
@@ -396,11 +417,11 @@ export default function Admin() {
           )}
 
           {tab === "skills" && (
-            <Card title="Skills & Notes" icon={Palette}>
+            <Card title="技能与随笔" subtitle="Skills & Notes" icon={Palette}>
               <p className="-mt-2 text-xs leading-relaxed text-white/50">
                 每一项技能都会显示为一张带图标和说明文字的卡片；这里的内容会同步到主页。
               </p>
-              <Field label="Skills Headline">
+              <Field label="Skills 标题 / Headline">
                 <Input value={draft.skills.headline} onChange={(v) => update("skills.headline", v)} />
               </Field>
               <div className="space-y-4">
@@ -415,12 +436,12 @@ export default function Admin() {
                       <Field label="图标 / Icon"><select value={group.icon || "Sparkles"} onChange={(e) => updateSkill(i, "icon", e.target.value)} className="w-full border border-white/10 bg-white/5 px-4 py-2 text-sm outline-none focus:border-white/40"><option value="PenTool">PenTool · 设计</option><option value="Box">Box · 工具</option><option value="Languages">Languages · 语言</option><option value="Sparkles">Sparkles · 其他</option></select></Field>
                     </div>
                     <Field label="说明文本 / Description"><Textarea value={group.description || ""} onChange={(v) => updateSkill(i, "description", v)} rows={2} /></Field>
-                    <Field label="技能项目（用逗号分隔）"><Textarea value={group.items.join(", ")} onChange={(v) => updateSkill(i, "items", v.split(/[,，]/).map((item) => item.trim()).filter(Boolean))} rows={2} /></Field>
+                    <Field label="技能项目 / Items（逗号分隔）"><Textarea value={group.items.join(", ")} onChange={(v) => updateSkill(i, "items", v.split(/[,，]/).map((item) => item.trim()).filter(Boolean))} rows={2} /></Field>
                   </div>
                 ))}
               </div>
               <button type="button" onClick={() => update("skills.groups", [...draft.skills.groups, { category: "New skill", icon: "Sparkles", description: "", items: [] }])} className="flex items-center gap-2 border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:bg-white/5"><Plus size={14} /> 添加技能卡</button>
-              <Field label="常用工具（用逗号分隔）"><Textarea value={draft.skills.tools.join(", ")} onChange={(v) => update("skills.tools", v.split(/[,，]/).map((item) => item.trim()).filter(Boolean))} rows={2} /></Field>
+              <Field label="常用工具 / Tools（逗号分隔）"><Textarea value={draft.skills.tools.join(", ")} onChange={(v) => update("skills.tools", v.split(/[,，]/).map((item) => item.trim()).filter(Boolean))} rows={2} /></Field>
             </Card>
           )}
 
@@ -582,7 +603,7 @@ export default function Admin() {
                       </p>
                     </Field>
 
-                    <Field label="PDF 附件（弹窗里直接预览）">
+                    <Field label="PDF 附件 / PDF File（弹窗内直接预览）">
                       <div className="flex gap-2">
                         <Input
                           value={w.pdf || ""}
@@ -643,7 +664,7 @@ export default function Admin() {
                       />
                     </Field>
 
-                    <Field label="外链 URL（可选）">
+                    <Field label="外链 / Link URL（可选）">
                       <Input
                         value={w.link || ""}
                         onChange={(v) => updateWork(i, "link", v)}
@@ -664,7 +685,7 @@ export default function Admin() {
                 </button>
               </div>
 
-              <Field label="Section Headline">
+              <Field label="区块标题 / Section Headline">
                 <Input
                   value={draft.works.headline}
                   onChange={(v) => update("works.headline", v)}
@@ -675,7 +696,7 @@ export default function Admin() {
 
           {tab === "theme" && (
             <>
-              <Card title="主题色" icon={Palette}>
+              <Card title="主题" subtitle="Theme" icon={Palette}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {THEMES.map((t) => (
                     <button
@@ -721,7 +742,7 @@ export default function Admin() {
                 </div>
               </Card>
 
-              <Card title="排版参数" icon={Type}>
+              <Card title="排版参数" subtitle="Typography" icon={Type}>
                 <Field label="字体 / Display Font">
                   <select
                     value={draft.theme.fontDisplay}
@@ -735,7 +756,7 @@ export default function Admin() {
                     ))}
                   </select>
                 </Field>
-                <Field label="字号缩放">
+                <Field label="字号缩放 / Font Scale">
                   <input
                     type="range"
                     min="0.9"
@@ -759,7 +780,7 @@ export default function Admin() {
                   />
                   <p className="text-xs text-white/40 mt-1">{draft.theme.lineHeight}</p>
                 </Field>
-                <Field label="圆角">
+                <Field label="圆角 / Corner Radius">
                   <input
                     type="range"
                     min="0"
@@ -777,8 +798,8 @@ export default function Admin() {
 
           {tab === "pdf" && (
             <>
-              <Card title="PDF 简历" icon={Upload}>
-                <Field label="启用 PDF 在线阅读">
+              <Card title="PDF 简历" subtitle="Résumé PDF" icon={Upload}>
+                <Field label="启用 PDF 在线阅读 / Enable PDF Viewer">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -792,7 +813,7 @@ export default function Admin() {
                   </label>
                 </Field>
 
-                <Field label="PDF 文件 URL">
+                <Field label="PDF 文件链接 / PDF URL">
                   <Input
                     value={draft.pdf.url}
                     onChange={(v) => update("pdf.url", v)}
@@ -807,21 +828,21 @@ export default function Admin() {
                   </p>
                 </Field>
 
-                <Field label="文件名（下载时）">
+                <Field label="下载文件名 / Download Filename">
                   <Input
                     value={draft.pdf.filename}
                     onChange={(v) => update("pdf.filename", v)}
                   />
                 </Field>
 
-                <Field label="Section Headline">
+                <Field label="区块标题 / Section Headline">
                   <Input
                     value={draft.pdf.headline}
                     onChange={(v) => update("pdf.headline", v)}
                   />
                 </Field>
 
-                <Field label="Section Description">
+                <Field label="区块描述 / Section Description">
                   <Textarea
                     value={draft.pdf.description}
                     onChange={(v) => update("pdf.description", v)}
@@ -856,14 +877,14 @@ export default function Admin() {
               </Card>
 
               <Card title="封面图 / Hero 背景" icon={ImageIcon}>
-                <Field label="Hero 背景图 URL">
+                <Field label="Hero 背景图 / Background Image URL">
                   <Input
                     value={draft.hero.backgroundImage}
                     onChange={(v) => update("hero.backgroundImage", v)}
                     placeholder="/cover.jpg 或 https://..."
                   />
                 </Field>
-                <Field label="Hero 背景视频 URL（可选）">
+                <Field label="Hero 背景视频 / Background Video URL（可选）">
                   <Input
                     value={draft.hero.backgroundVideo}
                     onChange={(v) => update("hero.backgroundVideo", v)}
@@ -880,7 +901,7 @@ export default function Admin() {
 
           {tab === "system" && (
             <>
-              <Card title="数据管理" icon={Settings}>
+              <Card title="数据管理" subtitle="Data Management" icon={Settings}>
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={exportJSON}
@@ -907,23 +928,33 @@ export default function Admin() {
                 </p>
               </Card>
 
-              <Card title="修改后台密码" icon={Lock}>
+              <Card title="修改后台密码" subtitle="Change Password" icon={Lock}>
                 <ChangePasswordForm />
               </Card>
 
-              <Card title="注意事项" icon={AlertTriangle}>
+              <Card title="架构说明" subtitle="How it works" icon={AlertTriangle}>
                 <ul className="text-sm text-white/70 space-y-2 list-disc pl-5">
                   <li>
-                    配置真源是腾讯云 CloudBase 数据库：后台保存 → 云函数校验密码写入 →
+                    配置真源是腾讯云 CloudBase 数据库：后台用 CloudBase Auth 账号密码登录
+                    （<code className="text-white/70">siteadmin</code>）后直写数据库 →
                     所有访客<b className="text-white">实时收到推送</b>（无需刷新页面、无需重新部署）。
+                  </li>
+                  <li>
+                    数据库写权限由安全规则锁定为管理员本人（匿名访客只读），
+                    登录态与写权限均由云端强制校验。
                   </li>
                   <li>
                     <code className="text-white/70">src/data/config.json</code> 仅作为首次初始化
                     与云端不可用时的兜底数据。
                   </li>
-                  <li>封面图 / Hero 背景图建议放 <code className="text-white/70">public/</code> 目录（最稳妥），不要用 base64（体积大会拖慢同步）。</li>
-                  <li>后台密码以 scrypt 加盐哈希存储在云端，首次访问 /admin 时自行设置，任何人都看不到明文。</li>
-                  <li>更安全的方案：Cloudflare Pages → Settings → Access，给 /admin 路径加邮箱验证。</li>
+                  <li>
+                    图片 / PDF 建议放 <code className="text-white/70">public/</code> 目录后用 URL 引用；
+                    base64 内嵌会撑大文档，超过云端单文档限制会导致保存失败。
+                  </li>
+                  <li>
+                    密码可在上方「修改后台密码」中更换（CloudBase Auth 托管，任何人看不到明文）。
+                  </li>
+                  <li>更强的防护：Cloudflare Pages → Settings → Access，给 /admin 路径加邮箱验证。</li>
                 </ul>
               </Card>
             </>
@@ -962,7 +993,7 @@ function AuthGate({ onAuthed }: { onAuthed: () => void }) {
           </div>
           <h1 className="font-display text-3xl mb-2">Admin</h1>
           <p className="text-xs uppercase tracking-[0.25em] text-white/40">
-            Sign in to continue
+            登录以继续 · Sign in to continue
           </p>
         </div>
         <form
@@ -979,7 +1010,7 @@ function AuthGate({ onAuthed }: { onAuthed: () => void }) {
           <input
             value={user}
             onChange={(e) => setUser(e.target.value)}
-            placeholder="Username"
+            placeholder="用户名 Username"
             autoComplete="username"
             className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
             autoFocus
@@ -988,7 +1019,7 @@ function AuthGate({ onAuthed }: { onAuthed: () => void }) {
             type="password"
             value={pwd}
             onChange={(e) => setPwd(e.target.value)}
-            placeholder="Password"
+            placeholder="密码 Password"
             autoComplete="current-password"
             className="w-full mt-3 px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
           />
@@ -998,7 +1029,7 @@ function AuthGate({ onAuthed }: { onAuthed: () => void }) {
             disabled={busy}
             className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition disabled:opacity-60"
           >
-            {busy ? "验证中…" : "Login"}
+            {busy ? "验证中… Verifying…" : "登录 Login"}
           </button>
         </form>
         <Link
@@ -1023,13 +1054,13 @@ function ChangePasswordForm() {
 
   return (
     <div className="space-y-3">
-      <Field label="当前密码">
+      <Field label="当前密码 / Current Password">
         <Input value={cur} onChange={setCur} type="password" />
       </Field>
-      <Field label="新密码">
+      <Field label="新密码 / New Password">
         <Input value={a} onChange={setA} type="password" placeholder="至少 6 位" />
       </Field>
-      <Field label="确认新密码">
+      <Field label="确认新密码 / Confirm Password">
         <Input value={b} onChange={setB} type="password" />
       </Field>
       <button
@@ -1050,7 +1081,7 @@ function ChangePasswordForm() {
         disabled={busy}
         className="px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em] disabled:opacity-60"
       >
-        {busy ? "更新中…" : "更新密码"}
+        {busy ? "更新中… Updating…" : "更新密码 · Update Password"}
       </button>
       {done && <p className="text-emerald-400 text-xs">✓ 密码已更新（云端生效）</p>}
       {err && <p className="text-rose-400 text-xs">{err}</p>}
@@ -1060,18 +1091,25 @@ function ChangePasswordForm() {
 
 function Card({
   title,
+  subtitle,
   icon: Icon,
   children,
 }: {
   title: string;
+  subtitle?: string;
   icon: any;
   children: React.ReactNode;
 }) {
   return (
     <div className="border border-white/10 bg-white/[0.02]">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
-        <Icon size={14} className="text-white/60" />
-        <h3 className="text-xs uppercase tracking-[0.25em]">{title}</h3>
+      <div className="flex items-baseline gap-3 px-6 py-4 border-b border-white/10 bg-white/[0.015]">
+        <Icon size={14} className="text-white/60 self-center" />
+        <h3 className="text-sm">{title}</h3>
+        {subtitle && (
+          <span className="text-[10px] uppercase tracking-[0.25em] text-white/35">
+            {subtitle}
+          </span>
+        )}
       </div>
       <div className="p-6 space-y-5">{children}</div>
     </div>
