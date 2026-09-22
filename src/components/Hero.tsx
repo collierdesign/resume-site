@@ -7,11 +7,11 @@ export function Hero() {
   const cfg = useConfig();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // 鼠标 spotlight
+  // 鼠标 spotlight（更大更柔）
   const mx = useMotionValue(50);
   const my = useMotionValue(50);
-  const sx = useSpring(mx, { damping: 30, stiffness: 150, mass: 0.5 });
-  const sy = useSpring(my, { damping: 30, stiffness: 150, mass: 0.5 });
+  const sx = useSpring(mx, { damping: 30, stiffness: 120, mass: 0.6 });
+  const sy = useSpring(my, { damping: 30, stiffness: 120, mass: 0.6 });
 
   useEffect(() => {
     const move = (e: MouseEvent) => {
@@ -40,9 +40,50 @@ export function Hero() {
       id="hero"
       className="relative min-h-screen w-full overflow-hidden flex flex-col"
     >
+      {/* ───── 隐藏 SVG 滤镜定义 ───── */}
+      <svg className="absolute w-0 h-0" aria-hidden="true">
+        <defs>
+          {/* 液体流淌：用 turbulence + 位移滤镜让色块持续变形 */}
+          <filter id="liquid" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.008 0.012"
+              numOctaves="2"
+              seed="5"
+              result="turb"
+            >
+              <animate
+                attributeName="baseFrequency"
+                values="0.008 0.012;0.016 0.009;0.011 0.014;0.008 0.012"
+                dur="24s"
+                repeatCount="indefinite"
+              />
+            </feTurbulence>
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="turb"
+              scale="320"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+
+          {/* 颗粒噪点（更强） */}
+          <filter id="grain">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.7"
+              numOctaves="3"
+              stitchTiles="stitch"
+            />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+        </defs>
+      </svg>
+
       {/* ───── 背景层 ───── */}
       <div className="absolute inset-0">
-        {/* 渐变底色 / 自定义背景 */}
+        {/* 1. 自定义背景图 / 视频 */}
         {cfg.hero.backgroundVideo ? (
           <video
             autoPlay
@@ -59,82 +100,94 @@ export function Hero() {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div
-            className="h-full w-full"
-            style={{
-              background: `radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 65%), linear-gradient(180deg, var(--bg) 0%, var(--bg) 55%, color-mix(in srgb, var(--bg) 92%, var(--accent)) 100%)`,
-            }}
-          />
+          <>
+            {/* 2. 底层基础渐变（对角、深色） */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 92%, var(--accent)) 40%, var(--bg) 75%, color-mix(in srgb, var(--bg) 88%, var(--accent)) 100%)",
+              }}
+            />
+
+            {/* 3. 液体流淌层：多个柔光色块被 SVG 滤镜扭曲变形 */}
+            <div
+              className="absolute inset-0"
+              style={{ filter: "url(#liquid)" }}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `
+                    radial-gradient(ellipse 55% 45% at 22% 28%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 65%),
+                    radial-gradient(ellipse 45% 55% at 78% 62%, color-mix(in srgb, var(--accent) 40%, transparent), transparent 70%),
+                    radial-gradient(ellipse 50% 60% at 48% 88%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 65%)
+                  `,
+                }}
+              />
+              <div
+                className="absolute -top-40 -left-40 w-[700px] h-[700px]"
+                style={{
+                  background:
+                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 35%, transparent) 0%, transparent 70%)",
+                }}
+              />
+              <div
+                className="absolute -bottom-32 -right-32 w-[650px] h-[650px]"
+                style={{
+                  background:
+                    "radial-gradient(circle, color-mix(in srgb, var(--accent) 28%, transparent) 0%, transparent 70%)",
+                }}
+              />
+            </div>
+          </>
         )}
 
-        {/* SVG 网格 */}
+        {/* 4. 加密网格（更密） */}
         <svg
-          className="absolute inset-0 w-full h-full text-[color:var(--fg)]"
-          style={{ opacity: 0.06 }}
+          className="absolute inset-0 w-full h-full text-[color:var(--fg)] pointer-events-none"
+          style={{ opacity: 0.1 }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <pattern id="heroGrid" width="64" height="64" patternUnits="userSpaceOnUse">
-              <path d="M 64 0 L 0 0 0 64" fill="none" stroke="currentColor" strokeWidth="0.5" />
+            <pattern id="heroGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path
+                d="M 32 0 L 0 0 0 32"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.4"
+              />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#heroGrid)" />
         </svg>
 
-        {/* 噪点纹理 */}
+        {/* 5. 强噪点纹理 */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ opacity: 0.07, mixBlendMode: "overlay" }}
+          style={{ opacity: 0.14, mixBlendMode: "overlay" }}
           xmlns="http://www.w3.org/2000/svg"
         >
-          <filter id="heroNoise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
-            <feColorMatrix type="saturate" values="0" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#heroNoise)" />
+          <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
 
-        {/* 浮动光斑 1 */}
+        {/* 6. 鼠标 spotlight（更大、更柔） */}
         <motion.div
-          className="absolute w-[600px] h-[600px] rounded-full blur-3xl pointer-events-none"
-          style={{
-            left: "-10%",
-            top: "15%",
-            background:
-              "radial-gradient(circle, color-mix(in srgb, var(--accent) 35%, transparent) 0%, transparent 70%)",
-          }}
-          animate={{ x: [0, 220, 60, 0], y: [0, 120, -40, 0] }}
-          transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        {/* 浮动光斑 2 */}
-        <motion.div
-          className="absolute w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none"
-          style={{
-            right: "-8%",
-            bottom: "5%",
-            background:
-              "radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 70%)",
-          }}
-          animate={{ x: [0, -180, -60, 0], y: [0, -100, 60, 0] }}
-          transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        {/* 鼠标 spotlight */}
-        <motion.div
-          className="absolute w-[700px] h-[700px] rounded-full pointer-events-none"
+          className="absolute rounded-full pointer-events-none"
           style={{
             left: spotlightX,
             top: spotlightY,
             x: "-50%",
             y: "-50%",
+            width: 1000,
+            height: 1000,
             mixBlendMode: "screen",
             background:
-              "radial-gradient(circle, color-mix(in srgb, var(--accent) 28%, transparent) 0%, transparent 45%)",
+              "radial-gradient(circle, color-mix(in srgb, var(--accent) 32%, transparent) 0%, transparent 40%)",
           }}
         />
 
-        {/* 底部柔和过渡 */}
+        {/* 7. 底部柔和过渡 */}
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-[color:var(--bg)]" />
       </div>
 
@@ -155,7 +208,7 @@ export function Hero() {
         </p>
       </motion.div>
 
-      {/* ───── 中央主标题（字符错峰） ───── */}
+      {/* ───── 中央主标题 ───── */}
       <div className="relative z-10 mx-auto w-full max-w-[90rem] px-6 md:px-12 flex-1 flex items-center py-12">
         <div className="w-full">
           <h1 className="font-display text-[color:var(--fg)] overflow-hidden leading-[0.9] tracking-tight text-[clamp(3rem,11vw,9rem)]">

@@ -13,11 +13,23 @@ import {
   Eye,
   LogOut,
   AlertTriangle,
+  Plus,
+  X,
+  Trash2,
 } from "lucide-react";
-import { login, logout, isAuthed, setPassword, getPasswordHint } from "../lib/admin";
+import {
+  login,
+  logout,
+  isAuthed,
+  setPassword,
+  changePassword,
+  getPasswordHint,
+  isInitialized,
+  setupPassword,
+} from "../lib/admin";
 import { useConfig, useConfigActions } from "../lib/useConfig";
 import { defaultConfig } from "../data/config";
-import type { SiteConfig } from "../types";
+import type { SiteConfig, WorkItem } from "../types";
 
 const THEMES = [
   { id: "dark", label: "Dark", preview: "#0a0a0a" },
@@ -35,14 +47,24 @@ const ACCENTS = [
   { name: "Rose", value: "#fb7185" },
 ];
 
+const EMPTY_WORK: WorkItem = {
+  title: "",
+  year: "",
+  tag: "",
+  cover: "",
+  description: "",
+  role: "",
+  link: "",
+};
+
 export default function Admin() {
   const nav = useNavigate();
   const cfg = useConfig();
   const { setConfig } = useConfigActions();
   const [authed, setAuthed] = useState(isAuthed());
-  const [pwd, setPwd] = useState("");
-  const [pwdErr, setPwdErr] = useState("");
-  const [tab, setTab] = useState<"profile" | "theme" | "pdf" | "system">("profile");
+  const [tab, setTab] = useState<"profile" | "theme" | "works" | "pdf" | "system">(
+    "profile"
+  );
   const [draft, setDraft] = useState<SiteConfig>(cfg);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
@@ -50,62 +72,9 @@ export default function Admin() {
     setDraft(cfg);
   }, [cfg]);
 
+  // ───────── 未登录：要么首次设置密码，要么输入密码 ─────────
   if (!authed) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white px-6">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-white/5 border border-white/10 mb-4">
-              <Lock size={20} />
-            </div>
-            <h1 className="font-display text-3xl mb-2">Admin</h1>
-            <p className="text-xs uppercase tracking-[0.25em] text-white/40">
-              Enter password to continue
-            </p>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (login(pwd)) {
-                setAuthed(true);
-                setPwdErr("");
-              } else {
-                setPwdErr("密码错误");
-              }
-            }}
-          >
-            <input
-              type="password"
-              value={pwd}
-              onChange={(e) => setPwd(e.target.value)}
-              placeholder="Password"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
-              autoFocus
-            />
-            {pwdErr && (
-              <p className="mt-2 text-xs text-rose-400">{pwdErr}</p>
-            )}
-            <button
-              type="submit"
-              className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition"
-            >
-              Login
-            </button>
-          </form>
-          <p className="mt-6 text-center text-xs text-white/40">
-            默认密码 <code className="text-white/70">admin123</code>
-            <br />
-            登录后到「系统」里修改
-          </p>
-          <Link
-            to="/"
-            className="block mt-8 text-center text-xs uppercase tracking-[0.25em] text-white/40 hover:text-white"
-          >
-            ← Back home
-          </Link>
-        </div>
-      </main>
-    );
+    return <AuthGate onAuthed={() => setAuthed(true)} />;
   }
 
   const update = (path: string, value: any) => {
@@ -154,6 +123,7 @@ export default function Admin() {
     reader.readAsText(file);
   };
 
+  // ───────── 已登录 ─────────
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white">
       {/* 顶栏 */}
@@ -195,8 +165,9 @@ export default function Admin() {
         <aside className="lg:col-span-3 space-y-1">
           {[
             { id: "profile", label: "Profile & Content", icon: Type },
+            { id: "works", label: `Works · ${draft.works.items.length}`, icon: ImageIcon },
             { id: "theme", label: "Theme & Layout", icon: Palette },
-            { id: "pdf", label: "PDF Resume", icon: Upload },
+            { id: "pdf", label: "PDF & Hero", icon: Upload },
             { id: "system", label: "System", icon: Settings },
           ].map((t) => (
             <button
@@ -331,6 +302,144 @@ export default function Admin() {
             </Card>
           )}
 
+          {tab === "works" && (
+            <Card title={`作品库 · 当前 ${draft.works.items.length} 件`} icon={ImageIcon}>
+              <p className="text-xs text-white/50 -mt-2">
+                点击「添加作品」可无限新增。第一个作品会在主页以 featured 大卡展示，其余为小卡。
+              </p>
+
+              <div className="space-y-4">
+                {draft.works.items.map((w, i) => (
+                  <div
+                    key={i}
+                    className="border border-white/10 p-5 space-y-3 relative bg-white/[0.02]"
+                  >
+                    <div className="flex items-center justify-between -mt-1">
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                        Project #{i + 1} {i === 0 && "· Featured"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update(
+                            "works.items",
+                            draft.works.items.filter((_, idx) => idx !== i)
+                          )
+                        }
+                        className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-[10px] uppercase tracking-[0.2em]"
+                      >
+                        <Trash2 size={12} /> 删除
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Field label="标题 / Title">
+                        <Input
+                          value={w.title}
+                          onChange={(v) => updateWork(i, "title", v)}
+                          placeholder="青山计划"
+                        />
+                      </Field>
+                      <Field label="年份 / Year">
+                        <Input
+                          value={w.year}
+                          onChange={(v) => updateWork(i, "year", v)}
+                          placeholder="2025"
+                        />
+                      </Field>
+                      <Field label="标签 / Tag">
+                        <Input
+                          value={w.tag}
+                          onChange={(v) => updateWork(i, "tag", v)}
+                          placeholder="Brand Identity"
+                        />
+                      </Field>
+                      <Field label="角色 / Role">
+                        <Input
+                          value={w.role || ""}
+                          onChange={(v) => updateWork(i, "role", v)}
+                          placeholder="Lead Designer"
+                        />
+                      </Field>
+                    </div>
+
+                    <Field label="封面图 URL / Cover">
+                      <div className="flex gap-2">
+                        <Input
+                          value={w.cover || ""}
+                          onChange={(v) => updateWork(i, "cover", v)}
+                          placeholder="/works/青山计划.jpg 或 https://..."
+                        />
+                        <label className="flex items-center gap-1 px-3 py-2 border border-white/20 text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5 shrink-0">
+                          <Upload size={12} /> 本机
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                updateWork(i, "cover", reader.result as string);
+                                alert(
+                                  "封面已载入（base64）。图片 < 1MB 推荐，否则会超 localStorage。"
+                                );
+                              };
+                              reader.readAsDataURL(f);
+                            }}
+                          />
+                        </label>
+                      </div>
+                      {w.cover && (
+                        <div className="mt-2 h-24 w-32 border border-white/10 overflow-hidden bg-black/30">
+                          <img
+                            src={w.cover}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </Field>
+
+                    <Field label="描述 / Description">
+                      <Textarea
+                        value={w.description}
+                        onChange={(v) => updateWork(i, "description", v)}
+                        rows={3}
+                      />
+                    </Field>
+
+                    <Field label="外链 URL（可选）">
+                      <Input
+                        value={w.link || ""}
+                        onChange={(v) => updateWork(i, "link", v)}
+                        placeholder="https://..."
+                      />
+                    </Field>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    update("works.items", [...draft.works.items, { ...EMPTY_WORK }])
+                  }
+                  className="w-full flex items-center justify-center gap-2 px-4 py-4 border border-dashed border-white/30 text-xs uppercase tracking-[0.2em] text-white/70 hover:text-white hover:border-white/60 transition"
+                >
+                  <Plus size={14} /> 添加作品（无数量限制）
+                </button>
+              </div>
+
+              <Field label="Section Headline">
+                <Input
+                  value={draft.works.headline}
+                  onChange={(v) => update("works.headline", v)}
+                />
+              </Field>
+            </Card>
+          )}
+
           {tab === "theme" && (
             <>
               <Card title="主题色" icon={Palette}>
@@ -444,7 +553,7 @@ export default function Admin() {
                       className="w-5 h-5"
                     />
                     <span className="text-sm text-white/70">
-                      在首页底部展示 PDF 区块
+                      在首屏下方展示 PDF 区块（需在 Home.tsx 启用 &lt;PdfSection /&gt;）
                     </span>
                   </label>
                 </Field>
@@ -493,7 +602,6 @@ export default function Admin() {
                       input.onchange = async () => {
                         const file = input.files?.[0];
                         if (!file) return;
-                        // 把 PDF 转 base64 存到 localStorage（小文件 OK，大文件会超限）
                         const reader = new FileReader();
                         reader.onload = () => {
                           const dataUrl = reader.result as string;
@@ -545,7 +653,7 @@ export default function Admin() {
                     <Download size={14} /> 导出 config.json
                   </button>
                   <label className="flex items-center gap-2 px-4 py-2 border border-white/20 text-xs uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5">
-                    <Upload size={14} /> 导入 config.json
+                    <Upload size={22} /> 导入 config.json
                     <input
                       type="file"
                       accept="application/json"
@@ -564,15 +672,16 @@ export default function Admin() {
               </Card>
 
               <Card title="修改后台密码" icon={Lock}>
-                <NewPasswordForm />
+                <ChangePasswordForm />
               </Card>
 
               <Card title="注意事项" icon={AlertTriangle}>
                 <ul className="text-sm text-white/70 space-y-2 list-disc pl-5">
                   <li>本后台的「修改」存于浏览器 localStorage，清缓存会丢失，请定期导出 JSON 备份。</li>
-                  <li>PDF / 图片放 <code className="text-white/70">public/</code> 目录是最稳妥的方案。</li>
-                  <li>默认密码 <code className="text-white/70">admin123</code>，部署后请立刻修改。</li>
+                  <li>封面图 / Hero 背景图建议放 <code className="text-white/70">public/</code> 目录（最稳妥），不要用 base64。</li>
+                  <li>本后台没有默认密码——首次访问时自行设置。源码公开，密码属「防路人」级别。</li>
                   <li>如需真正云端管理（多设备同步），需对接 Cloudflare KV 或 D1（后续可扩展）。</li>
+                  <li>更安全的方案：Cloudflare Pages → Settings → Access，给 /admin 路径加邮箱验证。</li>
                 </ul>
               </Card>
             </>
@@ -580,6 +689,173 @@ export default function Admin() {
         </section>
       </div>
     </main>
+  );
+
+  function updateWork(idx: number, key: keyof WorkItem, value: string) {
+    const next = [...draft.works.items];
+    next[idx] = { ...next[idx], [key]: value };
+    update("works.items", next);
+  }
+}
+
+/* ───────── 登录 / 首次设密 ───────── */
+function AuthGate({ onAuthed }: { onAuthed: () => void }) {
+  const initialized = isInitialized();
+  const [pwd, setPwd] = useState("");
+  const [pwd2, setPwd2] = useState("");
+  const [err, setErr] = useState("");
+
+  if (!initialized) {
+    // 首次：设置初始密码
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white px-6">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-white/5 border border-white/10 mb-4">
+              <Lock size={20} />
+            </div>
+            <h1 className="font-display text-3xl mb-2">Welcome</h1>
+            <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+              首次使用 · 设置一个后台密码
+            </p>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (pwd.length < 6) return setErr("密码至少 6 位");
+              if (pwd !== pwd2) return setErr("两次密码不一致");
+              setupPassword(pwd);
+              onAuthed();
+            }}
+          >
+            <input
+              type="password"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              placeholder="新密码（至少 6 位）"
+              className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
+              autoFocus
+            />
+            <input
+              type="password"
+              value={pwd2}
+              onChange={(e) => setPwd2(e.target.value)}
+              placeholder="确认密码"
+              className="w-full mt-3 px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
+            />
+            {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
+            <button
+              type="submit"
+              className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition"
+            >
+              创建密码并进入
+            </button>
+          </form>
+          <p className="mt-6 text-center text-xs text-white/40 leading-relaxed">
+            密码仅保存在你的浏览器本地。<br />
+            <span className="text-white/60">务必记住 —— 源码公开，无法找回。</span>
+          </p>
+          <Link
+            to="/"
+            className="block mt-8 text-center text-xs uppercase tracking-[0.25em] text-white/40 hover:text-white"
+          >
+            ← Back home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // 已初始化：输入密码
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white px-6">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-white/5 border border-white/10 mb-4">
+            <Lock size={20} />
+          </div>
+          <h1 className="font-display text-3xl mb-2">Admin</h1>
+          <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+            Enter password to continue
+          </p>
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (login(pwd)) {
+              onAuthed();
+            } else {
+              setErr("密码错误");
+            }
+          }}
+        >
+          <input
+            type="password"
+            value={pwd}
+            onChange={(e) => setPwd(e.target.value)}
+            placeholder="Password"
+            className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition"
+            autoFocus
+          />
+          {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
+          <button
+            type="submit"
+            className="w-full mt-4 px-5 py-4 bg-white text-black text-xs uppercase tracking-[0.25em] hover:bg-white/90 transition"
+          >
+            Login
+          </button>
+        </form>
+        <Link
+          to="/"
+          className="block mt-8 text-center text-xs uppercase tracking-[0.25em] text-white/40 hover:text-white"
+        >
+          ← Back home
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+/* ───────── 改密表单（已登录态） ───────── */
+function ChangePasswordForm() {
+  const [cur, setCur] = useState("");
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  return (
+    <div className="space-y-3">
+      <Field label="当前密码">
+        <Input value={cur} onChange={setCur} type="password" />
+      </Field>
+      <Field label="新密码">
+        <Input value={a} onChange={setA} type="password" placeholder="至少 6 位" />
+      </Field>
+      <Field label="确认新密码">
+        <Input value={b} onChange={setB} type="password" />
+      </Field>
+      <button
+        onClick={() => {
+          if (a.length < 6) return setErr("新密码至少 6 位");
+          if (a !== b) return setErr("两次新密码不一致");
+          if (!changePassword(cur, a)) return setErr("当前密码错误");
+          setPassword(a); // 同步兜底（已登录态无需旧密码的便捷函数）
+          setCur("");
+          setA("");
+          setB("");
+          setErr("");
+          setDone(true);
+          setTimeout(() => setDone(false), 3000);
+        }}
+        className="px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em]"
+      >
+        更新密码
+      </button>
+      {done && <p className="text-emerald-400 text-xs">✓ 密码已更新</p>}
+      {err && <p className="text-rose-400 text-xs">{err}</p>}
+      <p className="text-xs text-white/40">当前状态：{getPasswordHint()}</p>
+    </div>
   );
 }
 
@@ -652,38 +928,5 @@ function Textarea({
       rows={rows}
       className="w-full px-4 py-2 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition resize-y"
     />
-  );
-}
-
-function NewPasswordForm() {
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
-  const [done, setDone] = useState(false);
-
-  return (
-    <div className="space-y-3">
-      <Field label="新密码">
-        <Input value={a} onChange={setA} type="password" placeholder="至少 6 位" />
-      </Field>
-      <Field label="确认新密码">
-        <Input value={b} onChange={setB} type="password" />
-      </Field>
-      <button
-        onClick={() => {
-          if (a.length < 6) return alert("至少 6 位");
-          if (a !== b) return alert("两次密码不一致");
-          setPassword(a);
-          setA("");
-          setB("");
-          setDone(true);
-          setTimeout(() => setDone(false), 3000);
-        }}
-        className="px-4 py-2 bg-white text-black text-xs uppercase tracking-[0.2em]"
-      >
-        更新密码
-      </button>
-      {done && <p className="text-emerald-400 text-xs">✓ 密码已更新</p>}
-      <p className="text-xs text-white/40">当前状态：{getPasswordHint()}</p>
-    </div>
   );
 }
