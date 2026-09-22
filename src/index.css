@@ -1,0 +1,193 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #fafaf7;
+    --fg: #0a0a0a;
+    --fg-muted: #6b6b6b;
+    --fg-subtle: #999999;
+    --border: #e8e6e1;
+    --accent: #0a0a0a;
+    --link: #0a0a0a;
+  }
+
+  /* Theme: Dark */
+  [data-theme='dark'] {
+    --bg: #0a0a0a;
+    --fg: #fafaf7;
+    --fg-muted: #999999;
+    --fg-subtle: #5a5a5a;
+    --border: #1f1f1f;
+    --accent: #fafaf7;
+    --link: #fafaf7;
+  }
+
+  /* Theme: Paper Warm */
+  [data-theme='warm'] {
+    --bg: #f5f1ea;
+    --fg: #2a2520;
+    --fg-muted: #7a6f63;
+    --fg-subtle: #a89c8e;
+    --border: #e3dcd0;
+    --accent: #2a2520;
+    --link: #2a2520;
+  }
+
+  /* Theme: Pure Ink (highest contrast) */
+  [data-theme='ink'] {
+    --bg: #ffffff;
+    --fg: #000000;
+    --fg-muted: #555555;
+    --fg-subtle: #999999;
+    --border: #000000;
+    --accent: #000000;
+    --link: #000000;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+    font-weight: 400;
+    font-feature-settings: 'ss01', 'cv11';
+    transition: background-color 0.6s ease, color 0.6s ease;
+  }
+
+  ::selection {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--fg-muted);
+    opacity: 0.4;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--fg);
+  }
+}
+
+@layer components {
+  .container-wide {
+    @apply mx-auto w-full max-w-[1440px] px-6 md:px-10 lg:px-16;
+  }
+
+  .container-narrow {
+    @apply mx-auto w-full max-w-[920px] px-6 md:px-10;
+  }
+
+  .heading-display {
+    font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .heading-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .text-muted {
+    color: var(--fg-muted);
+  }
+
+  .text-subtle {
+    color: var(--fg-subtle);
+  }
+
+  .border-theme {
+    border-color: var(--border);
+  }
+
+  .link-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .link-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(1);
+    transform-origin: right;
+    transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+  }
+  .link-underline:hover::after {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .hover-lift {
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+}
+
+@layer utilities {
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .clip-text {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Reveal animation utility (used with IntersectionObserver in lib/reveal.ts) */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }

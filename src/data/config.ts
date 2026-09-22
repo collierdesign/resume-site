@@ -1,0 +1,182 @@
+import type { SiteConfig } from "../types";
+
+/**
+ * 站点的默认配置。
+ * 你可以直接修改这个文件 push 到 GitHub 部署，
+ * 或在 /admin 后台可视化编辑后下载 JSON 覆盖它。
+ */
+export const defaultConfig: SiteConfig = {
+  profile: {
+    name: "Starle 林夏",
+    title: "Designer · Creator · Storyteller",
+    location: "上海 · 中国",
+    email: "hello@starle.cn",
+  },
+
+  nav: [
+    { id: "about", label: "About" },
+    { id: "experience", label: "Experience" },
+    { id: "works", label: "Works" },
+    { id: "skills", label: "Skills" },
+    { id: "contact", label: "Contact" },
+  ],
+
+  hero: {
+    eyebrow: "Portfolio · 2026",
+    backgroundImage: "",
+    backgroundVideo: "",
+    quickFacts: [
+      { label: "Location", value: "上海 / Shanghai" },
+      { label: "Focus", value: "Brand · Editorial · Type" },
+      { label: "Status", value: "Open to collaborations" },
+    ],
+  },
+
+  about: {
+    headline: "在设计中寻找诗意的人。",
+    paragraph1:
+      "我是一名独立设计师，过去 7 年在品牌、视觉与编辑设计领域持续探索。我相信好的设计不在于“多”，而在于“准”——准确地表达，准确地传递情绪，准确地解决真实问题。",
+    paragraph2:
+      "除了商业项目，我也写写字、拍拍照、收藏老物件。喜欢自然、纸本、慢节奏的事物。这个网站是我的数字名片，欢迎慢慢翻阅。",
+    stats: [
+      { label: "Years of practice", value: "7+" },
+      { label: "Projects shipped", value: "60+" },
+      { label: "Brands built", value: "20+" },
+      { label: "Awards", value: "32" },
+    ],
+  },
+
+  experience: {
+    headline: "一路走来的轨迹。",
+    items: [
+      {
+        period: "2024 — Now",
+        role: "独立设计师 / Independent Designer",
+        company: "自由职业",
+        location: "上海",
+        description:
+          "为品牌与文化机构提供视觉识别、编辑设计与艺术指导。代表项目：青山计划、城市诗人。",
+        highlights: [
+          "主导 5+ 个品牌的视觉系统搭建",
+          "客户包括文化机构、独立出版方与商业品牌",
+        ],
+      },
+      {
+        period: "2021 — 2024",
+        role: "高级设计师 / Senior Designer",
+        company: "XX 创意机构",
+        location: "上海",
+        description: "主导多个品牌的视觉系统搭建与跨媒介设计落地。",
+        highlights: ["带领 3 人设计小组", "客户涵盖美妆、餐饮、文化领域"],
+      },
+      {
+        period: "2018 — 2021",
+        role: "视觉设计师 / Visual Designer",
+        company: "YY 设计工作室",
+        location: "杭州",
+        description: "参与商业品牌、文化展览与出版物的视觉设计。",
+        highlights: ["3 次获 A'Design 奖", "作品收录于《BranD》杂志"],
+      },
+    ],
+  },
+
+  works: {
+    headline: "精选作品。",
+    items: [
+      {
+        title: "青山计划",
+        year: "2025",
+        tag: "Brand Identity",
+        cover: "",
+        description:
+          "为一家关注可持续生活方式的品牌打造视觉系统。从 Logo、字体到空间导视的整体设计。",
+        role: "Lead Designer",
+        link: "",
+      },
+      {
+        title: "城市诗人",
+        year: "2024",
+        tag: "Editorial",
+        cover: "",
+        description:
+          "一本关于城市与文学的独立出版物。整体设计、印刷监督、纸张选择。",
+        role: "Designer",
+        link: "",
+      },
+      {
+        title: "夜色美术馆",
+        year: "2024",
+        tag: "Exhibition",
+        cover: "",
+        description:
+          "当代艺术展览的主视觉、导视与衍生品设计。",
+        role: "Art Director",
+        link: "",
+      },
+      {
+        title: "WAVES",
+        year: "2023",
+        tag: "Motion",
+        cover: "",
+        description:
+          "音乐厂牌的动态识别与社交媒体视觉语言。",
+        role: "Motion Designer",
+        link: "",
+      },
+    ],
+  },
+
+  skills: {
+    headline: "我擅长的。",
+    groups: [
+      {
+        category: "Design",
+        items: [
+          "Brand Identity",
+          "Visual System",
+          "Editorial Design",
+          "Type Design",
+          "Art Direction",
+        ],
+      },
+      {
+        category: "Tools",
+        items: ["Figma", "Adobe CC", "Cinema 4D", "After Effects", "Glyphs"],
+      },
+      {
+        category: "Language",
+        items: ["中文 — Native", "English — Fluent", "日本語 — Daily"],
+      },
+    ],
+    tools: ["Figma", "Photoshop", "Illustrator", "InDesign", "Cinema 4D", "After Effects", "Glyphs", "Notion"],
+  },
+
+  pdf: {
+    enabled: true,
+    url: "/resume.pdf",
+    filename: "Starle-Resume-2026.pdf",
+    headline: "完整简历 PDF",
+    description:
+      "包含详细的经历、项目案例与技能清单。在线阅读或下载保存，方便发给面试官或合作伙伴。",
+  },
+
+  contact: {
+    eyebrow: "Let's talk",
+    socials: [
+      { label: "GitHub", url: "https://github.com/" },
+      { label: "Dribbble", url: "https://dribbble.com/" },
+      { label: "微信公众号", url: "#" },
+      { label: "小红书", url: "#" },
+      { label: "LinkedIn", url: "#" },
+    ],
+  },
+
+  theme: {
+    id: "dark",
+    accent: "#c5f82e",
+    fontDisplay: "'Playfair Display', serif",
+    fontScale: 1,
+    lineHeight: 1.65,
+    radius: 0,
+  },
+};
