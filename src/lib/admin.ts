@@ -34,6 +34,12 @@ export async function login(
     // 先登出，清掉可能的匿名会话，避免 "已登录" 错误
     await auth().signOut().catch(() => {});
     await auth().signInWithPassword({ username, password });
+    // 关键：V2 SDK 凭据错误时可能不抛异常（仅 console warning），
+    // 必须验证当前会话是否真的是非匿名管理员，否则会被静默放行。
+    const u = auth().currentUser;
+    if (!u || u.isAnonymous) {
+      return { ok: false, error: "用户名或密码错误" };
+    }
     return { ok: true };
   } catch (e: any) {
     return { ok: false, error: e?.message || "登录失败" };
@@ -69,10 +75,16 @@ export async function changePassword(
 export async function cloudSaveConfig(config: unknown): Promise<FnResult> {
   try {
     await ensureTcbAuth();
+    // 保存前强制校验管理员会话，避免匿名态被静默写入失败后只报模糊的"保存失败"
+    const u = auth().currentUser;
+    if (!u || u.isAnonymous) {
+      return { ok: false, error: "登录已失效，请重新登录后再保存" };
+    }
     const db = (tcbApp() as any).database();
     await db.collection("config").doc("main").set(config);
     return { ok: true };
   } catch (e: any) {
-    return { ok: false, error: e?.message || "保存失败" };
+    const code = e?.code ? ` [${e.code}]` : "";
+    return { ok: false, error: (e?.message || "保存失败") + code };
   }
 }
