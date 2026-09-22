@@ -294,7 +294,6 @@ function WorkModal({
     : item.cover
       ? [item.cover]
       : [];
-  const [activeImg, setActiveImg] = useState(0);
 
   const navBtn =
     "eyebrow text-[10px] text-[color:var(--muted)] transition-colors hover:text-[color:var(--fg)]";
@@ -352,54 +351,36 @@ function WorkModal({
           </div>
         </div>
 
-        <div className="relative z-10 flex-1 overflow-y-auto">
-          {/* 图集 */}
-          {gallery.length > 0 && (
-            <div className="relative bg-black/25">
-              <img
-                src={gallery[activeImg]}
-                alt={item.title}
-                className="mx-auto max-h-[55vh] w-full object-contain md:max-h-[58vh]"
-              />
-              {gallery.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3">
-                  <button
-                    onClick={() =>
-                      setActiveImg((activeImg - 1 + gallery.length) % gallery.length)
-                    }
-                    className="eyebrow text-[10px] text-[color:var(--fg)]/70 hover:text-[color:var(--fg)]"
-                  >
-                    ←
-                  </button>
-                  <span className="eyebrow tnum text-[9px]">
-                    {activeImg + 1} / {gallery.length}
-                  </span>
-                  <button
-                    onClick={() => setActiveImg((activeImg + 1) % gallery.length)}
-                    className="eyebrow text-[10px] text-[color:var(--fg)]/70 hover:text-[color:var(--fg)]"
-                  >
-                    →
-                  </button>
-                </div>
-              )}
-            </div>
+        {/* 标题区：固定在顶部，不随图片滚动 */}
+        <div className="relative z-20 shrink-0 border-b border-white/10 bg-black/55 px-5 py-6 backdrop-blur-xl md:px-8 md:py-8">
+          <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
+            <span className="seal-line" />
+            {item.tag} · {item.year}
+          </p>
+          <h3 className="display mt-4 text-[clamp(1.5rem,3.2vw,2.5rem)] leading-[1.15] text-[color:var(--fg)]">
+            {item.title}
+          </h3>
+          {item.role && (
+            <p className="mt-3 text-sm text-[color:var(--muted)]">
+              <span className="eyebrow mr-3 text-[10px]">Role</span>
+              {item.role}
+            </p>
           )}
+        </div>
 
-          {/* 缩略图 */}
-          {gallery.length > 1 && (
-            <div className="no-scrollbar flex gap-3 overflow-x-auto border-b border-[color:var(--line)] px-5 py-4 md:px-8">
+        <div className="relative z-10 flex-1 overflow-y-auto">
+          {/* 图集：公众号式纵向排布，图片之间零间距 */}
+          {gallery.length > 0 && (
+            <div className="flex flex-col bg-black/25">
               {gallery.map((src, i) => (
-                <button
+                <img
                   key={i}
-                  onClick={() => setActiveImg(i)}
-                  className={`h-14 w-14 shrink-0 overflow-hidden border transition-all duration-500 ${
-                    i === activeImg
-                      ? "border-[color:var(--accent)]"
-                      : "border-white/15 opacity-45 hover:opacity-80"
-                  }`}
-                >
-                  <img src={src} alt="" className="h-full w-full object-cover" />
-                </button>
+                  src={src}
+                  alt={`${item.title} — ${i + 1}/${gallery.length}`}
+                  loading="lazy"
+                  draggable={false}
+                  className="block w-full select-none"
+                />
               ))}
             </div>
           )}
@@ -427,24 +408,9 @@ function WorkModal({
             </div>
           )}
 
-          {/* 文字 */}
+          {/* 描述与外链（标题已固定在顶部） */}
           <div className="px-5 py-9 md:px-8 md:py-12">
-            <p className="eyebrow flex items-center gap-3 text-[10px] text-[color:var(--accent)]">
-              <span className="seal-line" />
-              {item.tag} · {item.year}
-            </p>
-            <h3 className="display mt-5 text-[clamp(1.6rem,3.6vw,2.75rem)] leading-[1.15] text-[color:var(--fg)]">
-              {item.title}
-            </h3>
-
-            {item.role && (
-              <p className="mt-4 text-sm text-[color:var(--muted)]">
-                <span className="eyebrow mr-3 text-[10px]">Role</span>
-                {item.role}
-              </p>
-            )}
-
-            <div className="rule my-8" />
+            <div className="rule mb-8" />
 
             <p className="whitespace-pre-line text-[0.92rem] leading-[1.95] text-[color:var(--fg)]/80">
               {item.description}
