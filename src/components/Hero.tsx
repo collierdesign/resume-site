@@ -124,7 +124,7 @@ export function Hero() {
               </p>
               <p
                 data-cursor-lens
-                className="w-anim display max-w-[12em] text-balance text-[clamp(1.9rem,4vw,4.1rem)] leading-[1.28] tracking-[-0.03em] text-[color:var(--fg)]"
+                className="w-anim display max-w-[13em] text-pretty text-[clamp(1.9rem,4vw,4.1rem)] leading-[1.28] tracking-[-0.03em] text-[color:var(--fg)]"
                 style={W}
               >
                 {cfg.hero.statement}
