@@ -327,6 +327,90 @@ export default function Admin() {
                 ))}
               </div>
 
+              {/* 导航标签 */}
+              <div className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  导航标签 / Nav Labels（页面顶部 About · Experience · Works · Skills · Contact）
+                </p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                  {(draft.nav || []).map((item, i) => (
+                    <Field key={item.id} label={item.id}>
+                      <Input
+                        value={item.label}
+                        onChange={(v) => {
+                          const next = [...draft.nav];
+                          next[i] = { ...next[i], label: v };
+                          update("nav", next);
+                        }}
+                      />
+                    </Field>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact 区块（页面底部） */}
+              <div className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  Contact 区块 / Footer Contact（页面底部邮箱下方）
+                </p>
+                <Field label="区块副标 / Eyebrow（默认 Get in touch）">
+                  <Input
+                    value={draft.contact?.eyebrow || ""}
+                    onChange={(v) => update("contact.eyebrow", v)}
+                  />
+                </Field>
+                <div className="space-y-3">
+                  {(draft.contact?.socials || []).map((s, i) => (
+                    <div key={i} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
+                      <Field label={`链接名 / Label ${i + 1}`}>
+                        <Input
+                          value={s.label}
+                          onChange={(v) => {
+                            const next = [...(draft.contact?.socials || [])];
+                            next[i] = { ...next[i], label: v };
+                            update("contact.socials", next);
+                          }}
+                        />
+                      </Field>
+                      <Field label="URL">
+                        <Input
+                          value={s.url}
+                          onChange={(v) => {
+                            const next = [...(draft.contact?.socials || [])];
+                            next[i] = { ...next[i], url: v };
+                            update("contact.socials", next);
+                          }}
+                        />
+                      </Field>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update(
+                            "contact.socials",
+                            (draft.contact?.socials || []).filter((_, idx) => idx !== i)
+                          )
+                        }
+                        className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-[10px] uppercase tracking-[0.2em] md:mb-1"
+                      >
+                        <Trash2 size={12} /> 删除
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update("contact.socials", [
+                        ...(draft.contact?.socials || []),
+                        { label: "New link", url: "https://" },
+                      ])
+                    }
+                    className="flex items-center gap-2 border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:bg-white/5"
+                  >
+                    <Plus size={14} /> 添加链接 · Add link
+                  </button>
+                </div>
+              </div>
+
               <Field label="首屏一句话 / Hero Statement（鼠标滑过会变粗）">
                 <Textarea
                   value={draft.hero.statement || ""}
