@@ -10,7 +10,6 @@ export default function App() {
   return (
     <ConfigProvider>
       <BrowserRouter>
-        <div className="page-grain" aria-hidden="true" />
         <CursorAura />
         <Routes>
           <Route path="/admin" element={<Admin />} />

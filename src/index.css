@@ -57,16 +57,6 @@
     transition: background-color 0.6s ease, color 0.6s ease;
   }
 
-  .page-grain {
-    position: fixed;
-    z-index: 55;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.5;
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  }
-
   /* 中文标点更克制 */
   h1,
   h2,
@@ -283,20 +273,6 @@
 }
 
 @layer utilities {
-  /* ── 纸感细颗粒（噪点，非噪波）─────────── */
-  .grain {
-    position: relative;
-  }
-  .grain::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.09;
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
   /* ── 织物纤维：极淡的经纬线 ─────────────── */
   .paper-fiber {
     background-image:
@@ -360,18 +336,10 @@
     background: rgba(140, 136, 126, 0.4);
   }
 
-  /* ── 黑色毛玻璃：背后内容隐约可见并扭曲变形 ── */
+  /* ── 黑色毛玻璃：背后内容隐约可见 ── */
   .glass-warp {
     -webkit-backdrop-filter: blur(14px) saturate(135%) brightness(0.85);
     backdrop-filter: blur(14px) saturate(135%) brightness(0.85);
-  }
-  @supports (backdrop-filter: url("#glass-warp")) {
-    .glass-warp {
-      -webkit-backdrop-filter: blur(14px) saturate(135%) brightness(0.85)
-        url("#glass-warp");
-      backdrop-filter: blur(14px) saturate(135%) brightness(0.85)
-        url("#glass-warp");
-    }
   }
 
 
@@ -469,7 +437,6 @@
     animation: none !important;
   }
   .cursor-aura { display: none; }
-  .page-grain { display: none; }
   .reveal {
     opacity: 1;
     transform: none;

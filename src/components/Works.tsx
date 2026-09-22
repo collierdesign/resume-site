@@ -202,20 +202,20 @@ function WorkCard({
         </div>
       </div>
 
-      {/* 图片下方固定信息：年份在上，标题与标签同行 */}
-      <div className="mt-3 md:mt-4">
-        <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/45 md:text-[10px]">
-          {item.year}
-        </span>
-        <div className="mt-1 flex items-baseline justify-between gap-3 md:gap-4">
-          <h3
-            data-cursor-lens
-            className="w-anim display text-[1rem] leading-snug text-[color:var(--fg)] md:text-[1.35rem]"
-            style={W}
-          >
-            {item.title}
-          </h3>
-          <span className="eyebrow shrink-0 text-[8px] md:text-[9px]">{item.tag}</span>
+      {/* 图片下方固定信息：标题居左，右侧为标签组（年份在英文标签正上方） */}
+      <div className="mt-3 flex items-end justify-between gap-3 md:mt-4 md:gap-4">
+        <h3
+          data-cursor-lens
+          className="w-anim display text-[1rem] leading-snug text-[color:var(--fg)] md:text-[1.35rem]"
+          style={W}
+        >
+          {item.title}
+        </h3>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className="eyebrow tnum text-[9px] text-[color:var(--fg)]/45 md:text-[10px]">
+            {item.year}
+          </span>
+          <span className="eyebrow text-[8px] md:text-[9px]">{item.tag}</span>
         </div>
       </div>
     </motion.button>
@@ -299,15 +299,7 @@ function WorkModal({
         className="relative flex h-full w-full flex-col overflow-hidden border border-white/15 shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* SVG 折射滤镜：玻璃背后的内容被位移扭曲（Chromium 生效，其余降级为纯磨砂） */}
-        <svg aria-hidden className="pointer-events-none absolute h-0 w-0">
-          <filter id="glass-warp" x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="7" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="26" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </svg>
-
-        {/* 玻璃层 1：折射扭曲 + 压暗；层 2：黑色镜面渐变 */}
+        {/* 玻璃层 1：磨砂压暗；层 2：黑色镜面渐变 */}
         <div className="glass-warp pointer-events-none absolute inset-0" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#1a1a19]/72 via-[#0c0c0b]/70 to-[#161613]/78" />
         {/* 玻璃上缘高光 */}
