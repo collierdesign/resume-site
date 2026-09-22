@@ -174,13 +174,17 @@
   /* ── 滑过变粗（可变字重，过渡才顺滑）──── */
   .w-anim {
     font-weight: var(--w-from, 400);
-    transition: font-weight 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-      letter-spacing 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transition: font-weight 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      letter-spacing 0.5s cubic-bezier(0.22, 1, 0.36, 1),
       color 0.5s ease;
   }
   .w-anim:hover,
   .group:hover .w-anim {
     font-weight: var(--w-to, 700);
+    /* 悬停进入加快到 0.25s，反馈立即可见；离开用基础态的 0.5s 柔和回落 */
+    transition: font-weight 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      letter-spacing 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.25s ease;
   }
 
   /* ── 细线由左向右生长 ─────────────────── */
