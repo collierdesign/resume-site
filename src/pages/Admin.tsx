@@ -290,7 +290,42 @@ export default function Admin() {
                   value={draft.profile.location}
                   onChange={(v) => update("profile.location", v)}
                 />
+                <p className="text-xs text-white/40 mt-2">
+                  💡 显示在页面底部 Contact 区块（BASED IN）。
+                  首屏左下角的「Location」是下面的快速事实，需要单独改。
+                </p>
               </Field>
+
+              {/* 首屏左下角快速事实（Location / Focus / Status） */}
+              <div className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  首屏快速事实 / Hero Quick Facts（首页左下角 Location · Focus · Status）
+                </p>
+                {(draft.hero.quickFacts || []).map((fact, i) => (
+                  <div key={i} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <Field label={`标签 / Label ${i + 1}`}>
+                      <Input
+                        value={fact.label}
+                        onChange={(v) => {
+                          const next = [...draft.hero.quickFacts];
+                          next[i] = { ...next[i], label: v };
+                          update("hero.quickFacts", next);
+                        }}
+                      />
+                    </Field>
+                    <Field label={`内容 / Value ${i + 1}`}>
+                      <Input
+                        value={fact.value}
+                        onChange={(v) => {
+                          const next = [...draft.hero.quickFacts];
+                          next[i] = { ...next[i], value: v };
+                          update("hero.quickFacts", next);
+                        }}
+                      />
+                    </Field>
+                  </div>
+                ))}
+              </div>
 
               <Field label="首屏一句话 / Hero Statement（鼠标滑过会变粗）">
                 <Textarea
