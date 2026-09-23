@@ -95,6 +95,10 @@ export default function Admin() {
   const [uploading, setUploading] = useState<Record<string, number>>({});
   /* 作品库逐项折叠：默认全部折叠，避免几十个作品堆在一起要一直滚。点标题/行展开才有 body */
   const [openWorks, setOpenWorks] = useState<Record<number, boolean>>({});
+  /* 作品整行拖拽排序：ref 存拖动源（dragover 期间读不到 dataTransfer 数据），state 只管高亮 */
+  const dragWorkRef = useRef<number | null>(null);
+  const [dragWork, setDragWork] = useState<number | null>(null);
+  const [dragOverWork, setDragOverWork] = useState<number | null>(null);
   /** 待裁剪的文件及其用途 */
   const [cropJob, setCropJob] = useState<{
     file: File;
@@ -719,7 +723,7 @@ export default function Admin() {
           {tab === "works" && (
             <Card title={`作品库 · 当前 ${draft.works.items.length} 件`} icon={ImageIcon}>
               <p className="text-xs text-white/50 -mt-2">
-                点击「添加作品」可无限新增。主页所有作品以等大卡片排列，鼠标滑过显示简介，点击弹出案例详情（图集可左右翻页、PDF 可在弹窗内直接阅读）。
+                点击「添加作品」可无限新增。主页所有作品以等大卡片排列，鼠标滑过显示简介，点击弹出案例详情（图集可左右翻页、PDF 可在弹窗内直接阅读）。按住作品行可上下拖动调整顺序，首页同步此顺序。
               </p>
 
               <div className="space-y-4">
@@ -730,8 +734,64 @@ export default function Admin() {
                     key={i}
                     className="border border-white/10 relative bg-white/[0.02]"
                   >
-                    {/* 头部一行：点任意空白处展开/折叠；删除按钮单独在最右 */ }
-                    <div className="flex items-stretch justify-between">
+                    {/* 头部一行：点任意空白处展开/折叠；按住可上下拖动排序（首页同步此顺序）；删除在最右 */ }
+                    <div
+                      className={`flex items-stretch justify-between cursor-grab active:cursor-grabbing transition ${
+                        dragWork === i
+                          ? "opacity-40"
+                          : dragOverWork === i
+                          ? "ring-1 ring-inset ring-white/50"
+                          : ""
+                      }`}
+                      draggable
+                      onDragStart={(e) => {
+                        dragWorkRef.current = i;
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", `work-${i}`);
+                        setDragWork(i);
+                      }}
+                      onDragEnd={() => {
+                        dragWorkRef.current = null;
+                        setDragWork(null);
+                        setDragOverWork(null);
+                      }}
+                      onDragOver={(e) => {
+                        if (dragWorkRef.current === null) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dragOverWork !== i) setDragOverWork(i);
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverWork === i) setDragOverWork(null);
+                      }}
+                      onDrop={(e) => {
+                        const from = dragWorkRef.current;
+                        if (from === null) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dragWorkRef.current = null;
+                        setDragWork(null);
+                        setDragOverWork(null);
+                        if (from === i) return;
+                        const next = [...draft.works.items];
+                        const [moved] = next.splice(from, 1);
+                        next.splice(i, 0, moved);
+                        update("works.items", next);
+                        /* 展开状态跟着作品一起搬过去 */
+                        setOpenWorks((m) => {
+                          const flags = draft.works.items.map(
+                            (_, idx) => !!m[idx]
+                          );
+                          const [f] = flags.splice(from, 1);
+                          flags.splice(i, 0, f);
+                          const n: Record<number, boolean> = {};
+                          flags.forEach((v, idx) => {
+                            if (v) n[idx] = true;
+                          });
+                          return n;
+                        });
+                      }}
+                    >
                       <button
                         type="button"
                         onClick={() =>
