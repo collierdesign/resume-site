@@ -17,6 +17,7 @@ import {
   X,
   Trash2,
   ChevronDown,
+  GripVertical,
 } from "lucide-react";
 import {
   login,
@@ -723,7 +724,7 @@ export default function Admin() {
           {tab === "works" && (
             <Card title={`作品库 · 当前 ${draft.works.items.length} 件`} icon={ImageIcon}>
               <p className="text-xs text-white/50 -mt-2">
-                点击「添加作品」可无限新增。主页所有作品以等大卡片排列，鼠标滑过显示简介，点击弹出案例详情（图集可左右翻页、PDF 可在弹窗内直接阅读）。按住作品行可上下拖动调整顺序，首页同步此顺序。
+                点击「添加作品」可无限新增。主页所有作品以等大卡片排列，鼠标滑过显示简介，点击弹出案例详情（图集可左右翻页、PDF 可在弹窗内直接阅读）。按住每行左侧 ⋮⋮ 把手可上下拖动调整顺序（首页同步此顺序），点行展开编辑。
               </p>
 
               <div className="space-y-4">
@@ -734,16 +735,16 @@ export default function Admin() {
                     key={i}
                     className="border border-white/10 relative bg-white/[0.02]"
                   >
-                    {/* 头部一行：点任意空白处展开/折叠；按住可上下拖动排序（首页同步此顺序）；删除在最右 */ }
+                    {/* 头部一行：左侧 ⋮⋮ 把手拖动排序；中间点按展开/折叠；删除在最右。
+                        注意：<button> 会拦截 dragstart，拖拽必须由独立把手发起，事件冒泡到本 div 的 onDragStart */ }
                     <div
-                      className={`flex items-stretch justify-between cursor-grab active:cursor-grabbing transition ${
+                      className={`flex items-stretch justify-between transition ${
                         dragWork === i
                           ? "opacity-40"
                           : dragOverWork === i
                           ? "ring-1 ring-inset ring-white/50"
                           : ""
                       }`}
-                      draggable
                       onDragStart={(e) => {
                         dragWorkRef.current = i;
                         e.dataTransfer.effectAllowed = "move";
@@ -792,6 +793,14 @@ export default function Admin() {
                         });
                       }}
                     >
+                      {/* 拖拽把手（唯一能发起拖拽的位置） */}
+                      <span
+                        draggable
+                        title="按住上下拖动调整顺序"
+                        className="flex w-9 shrink-0 cursor-grab items-center justify-center border-r border-white/10 text-white/30 transition hover:bg-white/5 hover:text-white/70 active:cursor-grabbing"
+                      >
+                        <GripVertical size={15} />
+                      </span>
                       <button
                         type="button"
                         onClick={() =>
