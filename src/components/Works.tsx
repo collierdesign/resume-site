@@ -307,6 +307,9 @@ function WorkModal({
 
   const dragControls = useDragControls();
 
+  /* 手机端：上滑展开全屏（100dvh），全屏下滑先收回半屏，半屏下滑收起弹窗 */
+  const [fullscreen, setFullscreen] = useState(false);
+
   /* 最新回调存 ref：effect 只跑一次，避免反复解绑/绑定 */
   const cbRef = useRef({ onClose, onPrev, onNext });
   cbRef.current = { onClose, onPrev, onNext };
@@ -370,12 +373,16 @@ function WorkModal({
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0.55, bottom: 0.3 }}
         onDragEnd={(_, info) => {
-          /* 上滑超过半屏或快速上甩 → 收起；下滑同样可收起 */
-          const half = window.innerHeight / 2;
-          if (info.offset.y < -half || info.velocity.y < -700) onClose();
-          else if (info.offset.y > 120 || info.velocity.y > 600) onClose();
+          /* 上滑/快速上甩 → 展开全屏；下滑：全屏先收回半屏，半屏则收起弹窗 */
+          if (info.offset.y < -50 || info.velocity.y < -400) setFullscreen(true);
+          else if (info.offset.y > 120 || info.velocity.y > 600) {
+            if (fullscreen) setFullscreen(false);
+            else onClose();
+          }
         }}
-        className="relative flex h-[85vh] w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 bg-[#141412] shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-transparent md:select-text md:rounded-none"
+        className={`relative flex w-full select-none flex-col overflow-hidden rounded-t-2xl border border-white/15 bg-[#141412] shadow-[0_36px_110px_-18px_rgba(0,0,0,0.7)] transition-[height] duration-500 ease-silk md:h-auto md:max-h-[88vh] md:max-w-5xl md:bg-transparent md:select-text md:rounded-none ${
+          fullscreen ? "h-[100dvh]" : "h-[85vh]"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 玻璃层 1：磨砂压暗（手机端实底不磨砂）；层 2：黑色镜面渐变 */}
@@ -395,8 +402,11 @@ function WorkModal({
             dragControls.start(e);
           }}
         >
-          {/* 手机端抽屉把手（朱红色，深色底上一眼可见） */}
-          <div className="flex justify-center pb-1 pt-2.5 md:hidden">
+          {/* 手机端抽屉把手（朱红色；点一下也可在全屏/半屏间切换） */}
+          <div
+            className="flex w-full justify-center pb-1 pt-2.5 md:hidden"
+            onClick={() => setFullscreen((v) => !v)}
+          >
             <span className="h-1.5 w-14 rounded-full bg-[color:var(--accent)]" />
           </div>
 
