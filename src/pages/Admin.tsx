@@ -547,6 +547,61 @@ export default function Admin() {
                 />
               </Field>
 
+              {/* About 数字统计（7+ / 60+ / 20+ / 32 那一排） */}
+              <div className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  About 数字统计 / Stats（About 板块正文下方 7+ · 60+ 那一排）
+                </p>
+                {(draft.about.stats || []).map((s, i) => (
+                  <div key={i} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
+                    <Field label={`数字 / Value ${i + 1}`}>
+                      <Input
+                        value={s.value}
+                        onChange={(v) => {
+                          const next = [...draft.about.stats];
+                          next[i] = { ...next[i], value: v };
+                          update("about.stats", next);
+                        }}
+                      />
+                    </Field>
+                    <Field label={`说明 / Label ${i + 1}`}>
+                      <Input
+                        value={s.label}
+                        onChange={(v) => {
+                          const next = [...draft.about.stats];
+                          next[i] = { ...next[i], label: v };
+                          update("about.stats", next);
+                        }}
+                      />
+                    </Field>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        update(
+                          "about.stats",
+                          draft.about.stats.filter((_, index) => index !== i)
+                        )
+                      }
+                      className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-[10px] uppercase tracking-[0.2em] md:mb-1"
+                    >
+                      <Trash2 size={12} /> 删除
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    update("about.stats", [
+                      ...(draft.about.stats || []),
+                      { value: "0+", label: "NEW STAT" },
+                    ])
+                  }
+                  className="flex items-center gap-2 border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:bg-white/5"
+                >
+                  <Plus size={14} /> 添加一项 · Add stat
+                </button>
+              </div>
+
               <Field label="Experience 标题 / Headline">
                 <Input
                   value={draft.experience.headline}
