@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Lock,
@@ -774,150 +774,130 @@ export default function Admin() {
                       </Field>
                     </div>
 
-                    <Field label="封面图 URL / Cover（本机上传会打开裁剪窗口）">
-                      <div className="flex gap-2">
-                        <Input
-                          value={w.cover || ""}
-                          onChange={(v) => updateWork(i, "cover", v)}
-                          placeholder="https://... 或点击下方按钮本机上传"
-                        />
-                        <label className="flex items-center gap-1 px-3 py-2 border border-white/20 text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5 shrink-0">
-                          <Upload size={12} /> 上传并裁剪
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (!f) return;
-                              e.target.value = "";
-                              openCropper(f, (cropped) =>
-                                startUpload(`cover-${i}`, cropped, (url) =>
-                                  updateWork(i, "cover", url)
-                                )
-                              );
-                            }}
+                    <Field label="封面图 URL / Cover（点击按钮上传，或把图片拖到下面方框里）">
+                      <DropZone
+                        onFiles={(fs) =>
+                          openCropper(fs[0], (cropped) =>
+                            startUpload(`cover-${i}`, cropped, (url) =>
+                              updateWork(i, "cover", url)
+                            )
+                          )
+                        }
+                        hint="松开 → 裁剪并设为封面"
+                      >
+                        <div className="flex gap-2">
+                          <Input
+                            value={w.cover || ""}
+                            onChange={(v) => updateWork(i, "cover", v)}
+                            placeholder="https://... 或点击右侧按钮本机上传"
                           />
-                        </label>
-                      </div>
-                      {progressBar(`cover-${i}`)}
-                      {w.cover && (
-                        <div className="mt-2 h-24 w-32 border border-white/10 overflow-hidden bg-black/30">
-                          <img
-                            src={w.cover}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
+                          <label className="flex items-center gap-1 px-3 py-2 border border-white/20 text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:bg-white/5 shrink-0">
+                            <Upload size={12} /> 上传并裁剪
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (!f) return;
+                                e.target.value = "";
+                                openCropper(f, (cropped) =>
+                                  startUpload(`cover-${i}`, cropped, (url) =>
+                                    updateWork(i, "cover", url)
+                                  )
+                                );
+                              }}
+                            />
+                          </label>
                         </div>
-                      )}
+                        {progressBar(`cover-${i}`)}
+                        {w.cover && (
+                          <div className="mt-2 h-24 w-32 border border-white/10 overflow-hidden bg-black/30">
+                            <img
+                              src={w.cover}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </DropZone>
                     </Field>
 
-                    <Field label="图集 / Gallery（拖动缩略图可排序，弹窗里左右翻）">
-                      <div className="flex flex-wrap gap-2">
-                        {(w.gallery || []).map((src, gi) => (
-                          <div
-                            key={gi}
-                            draggable
-                            onDragStart={(e) => {
-                              e.dataTransfer.setData("text/plain", String(gi));
-                              e.dataTransfer.effectAllowed = "move";
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = "move";
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              const from = parseInt(
-                                e.dataTransfer.getData("text/plain"),
-                                10
-                              );
-                              if (isNaN(from) || from === gi) return;
-                              const next = [...(w.gallery || [])];
-                              const [moved] = next.splice(from, 1);
-                              next.splice(gi, 0, moved);
-                              updateWork(i, "gallery", next as any);
-                            }}
-                            className="relative w-20 h-20 border border-white/10 group cursor-grab active:cursor-grabbing"
-                            title="拖动排序"
-                          >
-                            <img
-                              src={src}
-                              alt=""
-                              className="w-full h-full object-cover pointer-events-none"
-                            />
-                            <span className="absolute bottom-1 left-1 bg-black/70 px-1 text-[9px] text-white/80">
-                              {gi + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
+                    <Field label="图集 / Gallery（按住缩略图可排序；从电脑把图片拖到下面方框也可直接上传）">
+                      <DropZone
+                        multiple
+                        onFiles={(fs) => uploadGalleryFiles(i, fs)}
+                        hint="松开 → 添加到图集"
+                      >
+                        <div className="flex flex-wrap gap-2 min-h-[5rem]">
+                          {(w.gallery || []).map((src, gi) => (
+                            <div
+                              key={gi}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", String(gi));
+                                e.dataTransfer.effectAllowed = "move";
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const from = parseInt(
+                                  e.dataTransfer.getData("text/plain"),
+                                  10
+                                );
+                                if (isNaN(from) || from === gi) return;
                                 const next = [...(w.gallery || [])];
-                                next.splice(gi, 1);
+                                const [moved] = next.splice(from, 1);
+                                next.splice(gi, 0, moved);
                                 updateWork(i, "gallery", next as any);
                               }}
-                              className="absolute top-1 right-1 p-0.5 bg-black/70 text-white opacity-0 group-hover:opacity-100 transition"
-                              aria-label="删除"
+                              className="relative w-20 h-20 border border-white/10 group cursor-grab active:cursor-grabbing"
+                              title="拖动排序"
                             >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ))}
-                        <label className="w-20 h-20 flex items-center justify-center border border-dashed border-white/30 text-white/60 hover:text-white hover:border-white/60 cursor-pointer transition">
-                          <Plus size={16} />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files || []);
-                              if (!files.length) return;
-                              e.target.value = "";
-                              const bad = files.find((f) => f.size > MAX_IMAGE_BYTES);
-                              if (bad) {
-                                alert(
-                                  `「${bad.name}」${(bad.size / 1024 / 1024).toFixed(1)}MB 超过 3MB 上限`
-                                );
-                                return;
-                              }
-                              (async () => {
-                                for (let fi = 0; fi < files.length; fi++) {
-                                  const f = files[fi];
-                                  try {
-                                    setUploading((m) => ({
-                                      ...m,
-                                      [`gallery-${i}`]: Math.round(
-                                        (fi / files.length) * 100
-                                      ),
-                                    }));
-                                    const url = await uploadImage(f, f.name, (p) =>
-                                      setUploading((m) => ({
-                                        ...m,
-                                        [`gallery-${i}`]: Math.round(
-                                          ((fi + p / 100) / files.length) * 100
-                                        ),
-                                      }))
-                                    );
-                                    // 函数式追加：始终基于最新 draft，避免闭包过期覆盖前一张
-                                    appendWorkGallery(i, [url]);
-                                  } catch (err: any) {
-                                    alert(err?.message || "上传失败");
-                                  }
-                                }
-                                setUploading((m) => {
-                                  const n = { ...m };
-                                  delete n[`gallery-${i}`];
-                                  return n;
-                                });
-                              })();
-                            }}
-                          />
-                        </label>
-                      </div>
+                              <img
+                                src={src}
+                                alt=""
+                                className="w-full h-full object-cover pointer-events-none"
+                              />
+                              <span className="absolute bottom-1 left-1 bg-black/70 px-1 text-[9px] text-white/80">
+                                {gi + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = [...(w.gallery || [])];
+                                  next.splice(gi, 1);
+                                  updateWork(i, "gallery", next as any);
+                                }}
+                                className="absolute top-1 right-1 p-0.5 bg-black/70 text-white opacity-0 group-hover:opacity-100 transition"
+                                aria-label="删除"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="w-20 h-20 flex items-center justify-center border border-dashed border-white/30 text-white/60 hover:text-white hover:border-white/60 cursor-pointer transition">
+                            <Plus size={16} />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                e.target.value = "";
+                                uploadGalleryFiles(i, files);
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </DropZone>
                       {progressBar(`gallery-${i}`)}
                       <p className="text-xs text-white/40 mt-2">
-                        💡 按住缩略图拖动即可调整顺序；弹窗里按此顺序轮播，第一张默认作封面。
+                        💡 按住缩略图拖动可调整顺序；弹窗里按此顺序排列，第一张默认作封面。
                       </p>
                     </Field>
 
@@ -1354,6 +1334,45 @@ export default function Admin() {
     });
   }
 
+  /** 把一批图片文件按序上传并追加到指定作品的图集（点击选择与拖拽上传共用） */
+  function uploadGalleryFiles(idx: number, files: File[]) {
+    if (!files.length) return;
+    const bad = files.find((f) => f.size > MAX_IMAGE_BYTES);
+    if (bad) {
+      alert(
+        `「${bad.name}」${(bad.size / 1024 / 1024).toFixed(1)}MB 超过 3MB 上限`
+      );
+      return;
+    }
+    (async () => {
+      for (let fi = 0; fi < files.length; fi++) {
+        const f = files[fi];
+        try {
+          setUploading((m) => ({
+            ...m,
+            [`gallery-${idx}`]: Math.round((fi / files.length) * 100),
+          }));
+          const url = await uploadImage(f, f.name, (p) =>
+            setUploading((m) => ({
+              ...m,
+              [`gallery-${idx}`]: Math.round(
+                ((fi + p / 100) / files.length) * 100
+              ),
+            }))
+          );
+          appendWorkGallery(idx, [url]);
+        } catch (err: any) {
+          alert(err?.message || "上传失败");
+        }
+      }
+      setUploading((m) => {
+        const n = { ...m };
+        delete n[`gallery-${idx}`];
+        return n;
+      });
+    })();
+  }
+
   function updateSkill(idx: number, key: string, value: any) {
     const next = [...draft.skills.groups];
     next[idx] = { ...next[idx], [key]: value };
@@ -1549,5 +1568,66 @@ function Textarea({
       rows={rows}
       className="w-full px-4 py-2 bg-white/5 border border-white/10 focus:border-white/40 outline-none text-sm transition resize-y"
     />
+  );
+}
+
+/* ───────── 拖拽上传区 ─────────
+ * 只响应外部文件拖入（e.dataTransfer.types 包含 "Files"），
+ * 内部图集拖拽排序（text/plain）走各自的 onDrop，互不冲突。
+ */
+function DropZone({
+  onFiles,
+  multiple = false,
+  hint,
+  children,
+}: {
+  onFiles: (files: File[]) => void;
+  multiple?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  const [over, setOver] = useState(false);
+  const depth = useRef(0);
+
+  return (
+    <div
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("Files")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          depth.current += 1;
+          if (depth.current === 1) setOver(true);
+        }
+      }}
+      onDragLeave={() => {
+        if (depth.current > 0) depth.current -= 1;
+        if (depth.current <= 0) {
+          depth.current = 0;
+          setOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        depth.current = 0;
+        setOver(false);
+        const files = Array.from(e.dataTransfer.files || []).filter((f) =>
+          f.type.startsWith("image/")
+        );
+        if (!files.length) return;
+        onFiles(multiple ? files : files.slice(0, 1));
+      }}
+      className={`relative transition-colors ${
+        over ? "ring-2 ring-emerald-400/60 bg-emerald-400/5" : ""
+      }`}
+    >
+      {children}
+      {over && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded bg-emerald-400/10">
+          <span className="rounded border border-emerald-300/70 bg-emerald-400/20 px-4 py-1.5 text-[10px] uppercase tracking-[0.3em] text-emerald-50">
+            {hint || "松开上传图片"}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
