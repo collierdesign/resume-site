@@ -76,6 +76,11 @@ export interface ThemeConfig {
 
 export interface SiteConfig {
   profile: Profile;
+  /** 站点级展示：浏览器标签页标题、SEO 描述等 */
+  site: {
+    title: string;
+    description?: string;
+  };
   nav: NavItem[];
   hero: {
     eyebrow: string;

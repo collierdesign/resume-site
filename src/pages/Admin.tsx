@@ -365,6 +365,14 @@ export default function Admin() {
                 </p>
               </Field>
 
+              <Field label="浏览器标签页标题 / Tab Title（显示在浏览器/收藏夹上）">
+                <Input
+                  value={draft.site?.title || ""}
+                  onChange={(v) => update("site.title", v)}
+                  placeholder="Starle 林夏 — 作品集"
+                />
+              </Field>
+
               {/* 首屏左下角快速事实（Location / Focus / Status） */}
               <div className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
                 <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">

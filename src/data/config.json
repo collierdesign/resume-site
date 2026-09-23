@@ -5,6 +5,9 @@
     "location": "上海 · 中国",
     "email": "hello@starle.cn"
   },
+  "site": {
+    "title": "Starle 林夏 — 作品集"
+  },
   "nav": [
     { "id": "about", "label": "About" },
     { "id": "experience", "label": "Experience" },
