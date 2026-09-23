@@ -16,6 +16,7 @@ import {
   Plus,
   X,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import {
   login,
@@ -92,6 +93,8 @@ export default function Admin() {
   const [saveErr, setSaveErr] = useState("");
   /** 上传进度：key → 0-100 */
   const [uploading, setUploading] = useState<Record<string, number>>({});
+  /* 作品库逐项折叠：默认全部折叠，避免几十个作品堆在一起要一直滚。点标题/行展开才有 body */
+  const [openWorks, setOpenWorks] = useState<Record<number, boolean>>({});
   /** 待裁剪的文件及其用途 */
   const [cropJob, setCropJob] = useState<{
     file: File;
@@ -720,15 +723,59 @@ export default function Admin() {
               </p>
 
               <div className="space-y-4">
-                {draft.works.items.map((w, i) => (
+                {draft.works.items.map((w, i) => {
+                  const open = !!openWorks[i];
+                  return (
                   <div
                     key={i}
-                    className="border border-white/10 p-5 space-y-3 relative bg-white/[0.02]"
+                    className="border border-white/10 relative bg-white/[0.02]"
                   >
-                    <div className="flex items-center justify-between -mt-1">
-                      <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-                        Project #{i + 1} {i === 0 && "· Featured"}
-                      </p>
+                    {/* 头部一行：点任意空白处展开/折叠；删除按钮单独在最右 */ }
+                    <div className="flex items-stretch justify-between">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenWorks((m) => ({ ...m, [i]: !m[i] }))
+                        }
+                        className="flex flex-1 items-center justify-between gap-3 p-5 text-left transition hover:bg-white/[0.03]"
+                        aria-expanded={open}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                            Project #{i + 1} {i === 0 && "· Featured"}
+                            {!open && (
+                              <span className="ml-3 normal-case tracking-normal text-white/30">
+                                {w.gallery?.length
+                                  ? `· ${w.gallery.length} 张图`
+                                  : ""}
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-white">
+                            <span className="truncate">
+                              {w.title || (
+                                <em className="text-white/40 not-italic">
+                                  未命名作品
+                                </em>
+                              )}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">
+                              {w.year}
+                            </span>
+                            {w.tag && (
+                              <span className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--accent)]">
+                                {w.tag}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <ChevronDown
+                          size={16}
+                          className={`shrink-0 text-white/50 transition-transform duration-300 ${
+                            open ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
                       <button
                         type="button"
                         onClick={() =>
@@ -737,12 +784,14 @@ export default function Admin() {
                             draft.works.items.filter((_, idx) => idx !== i)
                           )
                         }
-                        className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-[10px] uppercase tracking-[0.2em]"
+                        className="flex items-center gap-1 px-4 text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 text-[10px] uppercase tracking-[0.2em] transition border-l border-white/10"
                       >
                         <Trash2 size={12} /> 删除
                       </button>
                     </div>
 
+                    {open && (
+                      <div className="border-t border-white/10 p-5 pt-4 space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Field label="标题 / Title">
                         <Input
@@ -978,8 +1027,11 @@ export default function Admin() {
                         placeholder="https://..."
                       />
                     </Field>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
 
                 <button
                   type="button"
@@ -1588,15 +1640,39 @@ function DropZone({
 }) {
   const [over, setOver] = useState(false);
   const depth = useRef(0);
+  /* 在文档层面兜底：浏览器有时不会在「拖到外面释放」时给我们 dragleave，
+     导致 depth 永不归 0、绿框卡住。监听 window 的 dragend / drop 重置一次 */
+  useEffect(() => {
+    const reset = () => {
+      depth.current = 0;
+      setOver(false);
+    };
+    window.addEventListener("dragend", reset);
+    /* 捕获阶段：任何位置发生 drop 都清掉所有高亮（不影响我们自己 zone 的 onDrop 处理文件） */
+    window.addEventListener("drop", reset, true);
+    return () => {
+      window.removeEventListener("dragend", reset);
+      window.removeEventListener("drop", reset, true);
+    };
+  }, []);
+
+  const isFileDrag = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types || []).includes("Files");
 
   return (
     <div
+      onDragEnter={(e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        depth.current += 1;
+        if (depth.current === 1) setOver(true);
+      }}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("Files")) {
+        /* 只在这里声明允许 drop 并设置光标样式 —— 不递增计数器，避免 onDragOver
+           每帧触发把计数推飞后无法靠 onDragLeave 减回去（之前绿框卡住就是这个） */
+        if (isFileDrag(e)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
-          depth.current += 1;
-          if (depth.current === 1) setOver(true);
         }
       }}
       onDragLeave={() => {
@@ -1607,6 +1683,7 @@ function DropZone({
         }
       }}
       onDrop={(e) => {
+        if (!isFileDrag(e)) return;
         e.preventDefault();
         depth.current = 0;
         setOver(false);
